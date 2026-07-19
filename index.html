@@ -649,7 +649,10 @@ const Screens = {
           <button class="btn secondary small" onclick="Forms.open('contract','${c.id}')">تعديل</button>
         </div>
         <div class="btn-row">
+          <button class="btn secondary small" onclick="Inventory.open('${c.id}')">📦 قائمة المنقولات (${(c.inventory||[]).length})</button>
           <button class="btn secondary small" onclick="Actions.shareWhatsapp('contract','${c.id}')">مشاركة واتساب</button>
+        </div>
+        <div class="btn-row">
           <button class="btn danger small" onclick="Actions.softDelete('contracts','${c.id}')">أرشفة</button>
         </div>
       </div>
@@ -1213,6 +1216,72 @@ Forms.open = (function(orig){
   };
 })(Forms.open);
 
+/* ============================= قائمة المنقولات (Inventory) ============================= */
+const Inventory = {
+  open(contractId){
+    const c = findById(DB.contracts, contractId);
+    if(!c.inventory) c.inventory = [];
+    const body = el(`<div>
+      <div id="invListHolder"></div>
+      <div class="section-title" style="margin-top:18px;">إضافة قطعة جديدة</div>
+      <div class="field"><label>اسم القطعة</label><input id="inv_name" placeholder="مثال: ثلاجة، سرير، أريكة..."></div>
+      <div class="field-row">
+        <div class="field"><label>الكمية</label><input id="inv_qty" type="number" value="1" min="1"></div>
+        <div class="field"><label>الحالة</label>
+          <select id="inv_cond">
+            <option value="جديد">جديد</option>
+            <option value="جيد" selected>جيد</option>
+            <option value="متوسط">متوسط</option>
+            <option value="يحتاج صيانة">يحتاج صيانة</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>ملاحظات (اختياري)</label><input id="inv_notes" placeholder="مثال: خدش بسيط في الجانب"></div>
+      <button class="btn secondary" id="addInvBtn">+ إضافة للقائمة</button>
+      <div class="btn-row">
+        <button class="btn" id="printInvBtn">🖨️ طباعة قائمة المنقولات</button>
+      </div>
+    </div>`);
+    Modal.open('قائمة المنقولات — '+c.number, body);
+    Inventory._renderList(c, body);
+    body.querySelector('#addInvBtn').onclick = ()=>{
+      const name = body.querySelector('#inv_name').value.trim();
+      if(!name){ toast('اكتب اسم القطعة أولاً'); return; }
+      c.inventory.push({
+        id:uid(), name, qty:body.querySelector('#inv_qty').value||1,
+        condition:body.querySelector('#inv_cond').value, notes:body.querySelector('#inv_notes').value.trim()
+      });
+      audit('update','contract_inventory', c.id);
+      saveDB();
+      body.querySelector('#inv_name').value=''; body.querySelector('#inv_notes').value=''; body.querySelector('#inv_qty').value=1;
+      Inventory._renderList(c, body);
+      toast('تمت إضافة القطعة');
+    };
+    body.querySelector('#printInvBtn').onclick = ()=>Documents.printInventory(c.id);
+  },
+
+  _renderList(c, body){
+    const holder = body.querySelector('#invListHolder'); holder.innerHTML='';
+    if(!c.inventory.length){ holder.appendChild(el('<div class="empty">لا توجد قطع مسجّلة بعد. أضف أول قطعة من الأسفل.</div>')); return; }
+    const card = el('<div class="card"></div>');
+    c.inventory.forEach(item=>{
+      const row = el(`
+        <div class="list-row">
+          <div class="main"><div class="t">${esc(item.name)} × ${esc(item.qty)}</div><div class="s">${esc(item.condition)}${item.notes?(' · '+esc(item.notes)):''}</div></div>
+          <button class="icon-btn" style="width:32px;height:32px;font-size:13px;">🗑️</button>
+        </div>`);
+      row.querySelector('button').onclick = (e)=>{
+        e.stopPropagation();
+        c.inventory = c.inventory.filter(x=>x.id!==item.id);
+        audit('delete','contract_inventory_item', item.id);
+        saveDB(); Inventory._renderList(c, body); toast('تم حذف القطعة');
+      };
+      card.appendChild(row);
+    });
+    holder.appendChild(card);
+  }
+};
+
 /* ============================= الإجراءات (Actions) ============================= */
 const Actions = {
   deleteHard(collection, id){
@@ -1302,6 +1371,9 @@ const Documents = {
       '.warnbox{margin-top:16px;padding:10px;border:1px solid #000;font-size:11.5px;}'+
       '.sigrow{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:32px;}'+
       '.kv2{font-size:13px;line-height:2;}'+
+      'table{width:100%;border-collapse:collapse;margin-top:10px;}'+
+      'th,td{border:1px solid #999;padding:7px 8px;font-size:12px;text-align:right;}'+
+      'th{background:#f2f2f2;}'+
       '@media print{ @page{margin:14mm;} }'+
       '</style></head><body>'+innerHtml+
       '<scr'+'ipt>window.onload=function(){ setTimeout(function(){ window.focus(); window.print(); }, 250); };</scr'+'ipt>'+
@@ -1382,6 +1454,27 @@ const Documents = {
       ${qr?('<div class="qr-box"><img src="'+qr+'" width="100" height="100"></div><div style="text-align:center;font-family:monospace;font-size:10.5px;">رمز تحقق داخلي (اختياري): '+esc(c.verificationCode)+'</div>'):''}
     `;
     Documents._openPrintWindow('عقد '+c.number, html);
+  },
+
+  printInventory(id){
+    const c = findById(DB.contracts, id);
+    const items = c.inventory || [];
+    const rows = items.map((it,i)=>`<tr><td>${i+1}</td><td>${esc(it.name)}</td><td>${esc(it.qty)}</td><td>${esc(it.condition)}</td><td>${esc(it.notes||'')}</td></tr>`).join('');
+    const html = `
+      <div class="hdr">
+        <div class="h1">ملحق قائمة المنقولات</div>
+        <div class="h2">مرفق بعقد إيجار رقم ${esc(c.number)} — ${esc(tenantName(c.tenantId))}</div>
+      </div>
+      <table>
+        <thead><tr><th>#</th><th>القطعة</th><th>الكمية</th><th>الحالة</th><th>ملاحظات</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="5" style="text-align:center;padding:16px;">لا توجد قطع مسجّلة بعد</td></tr>'}</tbody>
+      </table>
+      <p style="margin-top:14px; font-size:12px;">يقر الطرفان بمطابقة هذه القائمة لحالة الأثاث والأجهزة المسلَّمة مع الوحدة بتاريخ بدء العقد.</p>
+      <div class="sigrow" style="margin-top:40px;">
+        <div class="psig">توقيع المؤجر</div>
+        <div class="psig">توقيع المستأجر</div>
+      </div>`;
+    Documents._openPrintWindow('ملحق المنقولات - '+c.number, html);
   },
 
   printReceipt(id){
