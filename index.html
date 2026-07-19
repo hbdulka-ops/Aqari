@@ -211,6 +211,8 @@ main{max-width:640px; margin:0 auto; padding:18px;}
 /* ---------- Print ---------- */
 .print-sheet{display:none;}
 @media print{
+  body{background:#fff !important;}
+  .print-sheet{display:block !important;}
   body *{visibility:hidden;}
   #print-area, #print-area *{visibility:visible;}
   #print-area{position:absolute; top:0; left:0; width:100%; padding:20px; color:#000; background:#fff;}
