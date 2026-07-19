@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewer-fit=cover">
+<title>عقاري PRO — إدارة العقارات والإيجارات</title>
+<meta name="theme-color" content="#070a12">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{
+  --bg:#070a12; --panel:#10151f; --panel-2:#161c2b; --line:#232a3d;
+  --text:#eef1f8; --muted:#7d8aa8; --accent:#6d5ef0; --accent-2:#d4af6a;
+  --accent-grad:linear-gradient(135deg,#6d5ef0,#8b6ff5);
+  --danger:#ff6b6b; --ok:#34d399; --warn:#f5c451;
+  --mono:'JetBrains Mono',monospace; --arabic:'IBM Plex Sans Arabic',sans-serif; --serif:'Cormorant Garamond',serif;
+  --radius:16px;
+}
+[data-theme="light"]{
+  --bg:#f4f5fa; --panel:#ffffff; --panel-2:#f0f1f7; --line:#e3e5ef;
+  --text:#161a26; --muted:#6b7290;
+}
+*{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  background:var(--bg); color:var(--text); font-family:var(--arabic);
+  padding-bottom:104px; -webkit-font-smoothing:antialiased;
+}
+button,input,select,textarea{font-family:inherit; color:inherit;}
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
+
+/* ---------- Top bar ---------- */
+#topbar{
+  position:sticky; top:0; z-index:20; background:rgba(7,10,18,.86);
+  padding:16px 18px 14px; position:relative;
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+}
+[data-theme="light"] #topbar{ background:rgba(244,245,250,.86); }
+#topbar::after{
+  content:''; position:absolute; bottom:0; left:0; right:0; height:1px;
+  background:linear-gradient(90deg, transparent, var(--accent-2), transparent); opacity:.5;
+}
+.topbar-row{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+.brand{display:flex; align-items:center; gap:12px; min-width:0;}
+.brand-mark{
+  flex-shrink:0; width:44px; height:44px; border-radius:50%;
+  border:1.5px solid rgba(212,175,106,.55);
+  background:radial-gradient(circle at 32% 24%, #2a2350, #0f1220 72%);
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--serif); font-size:20px; font-weight:700; color:#e9d9a8;
+  box-shadow:0 6px 18px rgba(109,94,240,.25);
+}
+.brand-text{display:flex; flex-direction:column; line-height:1.28; min-width:0;}
+.brand-name{font-family:var(--serif); font-size:21px; font-weight:700; display:flex; align-items:center; gap:7px; letter-spacing:.01em;}
+.brand-pro{
+  font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:.07em;
+  color:var(--accent-2); border:1px solid rgba(212,175,106,.45); background:rgba(212,175,106,.08);
+  padding:2px 6px; border-radius:5px;
+}
+.brand-org{font-size:11px; color:var(--muted); margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:var(--mono); letter-spacing:.03em;}
+.topbar-actions{display:flex; align-items:center; gap:8px; flex-shrink:0;}
+.role-chip{
+  width:36px; height:36px; border-radius:50%; background:var(--panel); border:1px solid var(--line);
+  display:flex; align-items:center; justify-content:center; font-size:15px; cursor:pointer;
+}
+.role-chip:active{transform:scale(.94);}
+.screen-strip{
+  margin-top:13px; padding-top:12px; border-top:1px solid var(--line);
+  font-size:13px; display:flex; align-items:center; gap:7px; font-weight:700;
+}
+.screen-strip::before{content:''; width:6px; height:6px; border-radius:50%; background:var(--accent-2); flex-shrink:0;}
+.screen-strip .dot{color:var(--muted); font-weight:400;}
+.screen-strip #screenSub{color:var(--muted); font-weight:400; font-family:var(--mono); font-size:11.5px;}
+.icon-btn{
+  width:38px;height:38px;border-radius:12px; background:var(--panel);
+  border:1px solid var(--line); display:flex; align-items:center; justify-content:center;
+  font-size:16px; cursor:pointer;
+}
+.icon-btn:active{transform:scale(.94);}
+
+/* ---------- Layout ---------- */
+main{max-width:640px; margin:0 auto; padding:18px;}
+.card{
+  background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  padding:18px; margin-bottom:14px; box-shadow:0 14px 30px -18px rgba(0,0,0,.6);
+}
+.section-title{font-size:12.5px; color:var(--muted); font-family:var(--mono); text-transform:uppercase; letter-spacing:.08em; margin:22px 4px 11px; display:flex; align-items:center; gap:6px;}
+.section-title:first-child{margin-top:0;}
+
+/* ---------- Dashboard stats ---------- */
+.stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:11px;}
+.stat{
+  background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  padding:16px; box-shadow:0 14px 30px -18px rgba(0,0,0,.6);
+}
+.stat .ic-badge{
+  width:30px; height:30px; border-radius:9px; background:rgba(109,94,240,.14); color:var(--accent);
+  display:flex; align-items:center; justify-content:center; font-size:14.5px; margin-bottom:10px;
+}
+.stat .n{font-family:var(--mono); font-size:22px; font-weight:700; color:var(--text);}
+.stat .l{font-size:12px; color:var(--muted); margin-top:4px;}
+.stat.warn .ic-badge{background:rgba(255,107,107,.14); color:var(--danger);}
+.stat.warn .n{color:var(--danger);}
+.stat.gold .ic-badge{background:rgba(212,175,106,.16); color:var(--accent-2);}
+.stat.gold .n{color:var(--accent-2);}
+
+/* ---------- Lists ---------- */
+.list-row{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:13px 4px; border-bottom:1px solid var(--line); cursor:pointer;
+}
+.list-row:last-child{border-bottom:none;}
+.list-row:active{background:var(--panel-2);}
+.list-row .main{min-width:0;}
+.list-row .t{font-size:14.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.list-row .s{font-size:12.5px; color:var(--muted); margin-top:2px;}
+.badge{
+  font-family:var(--mono); font-size:11px; padding:3px 9px; border-radius:999px;
+  white-space:nowrap; border:1px solid transparent;
+}
+.b-green{background:rgba(52,211,153,.13); color:var(--ok); border-color:rgba(52,211,153,.3);}
+.b-red{background:rgba(255,107,107,.13); color:var(--danger); border-color:rgba(255,107,107,.3);}
+.b-yellow{background:rgba(245,196,81,.14); color:var(--warn); border-color:rgba(245,196,81,.3);}
+.b-gray{background:rgba(125,138,168,.13); color:var(--muted); border-color:rgba(125,138,168,.28);}
+.b-teal{background:rgba(109,94,240,.14); color:var(--accent); border-color:rgba(109,94,240,.32);}
+
+.empty{text-align:center; padding:40px 20px; color:var(--muted); font-size:13.5px;}
+
+/* ---------- Buttons ---------- */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  background:var(--accent-grad); color:#fff; font-weight:700; font-size:14px;
+  border:none; border-radius:12px; padding:13px 18px; cursor:pointer; width:100%;
+  box-shadow:0 10px 24px -10px rgba(109,94,240,.55);
+}
+.btn:active{transform:scale(.98);}
+.btn.secondary{background:var(--panel-2); color:var(--text); border:1px solid var(--line); font-weight:600; box-shadow:none;}
+.btn.danger{background:rgba(255,107,107,.13); color:var(--danger); border:1px solid rgba(255,107,107,.35); box-shadow:none;}
+.btn.small{width:auto; padding:9px 14px; font-size:13px;}
+.btn-row{display:flex; gap:8px; margin-top:14px;}
+.btn-row .btn{flex:1;}
+
+.fab{
+  position:fixed; bottom:114px; left:18px; z-index:15;
+  width:54px; height:54px; border-radius:50%; background:var(--accent-grad);
+  color:#fff; font-size:25px; border:none; box-shadow:0 12px 28px -8px rgba(109,94,240,.6);
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+
+/* ---------- Search ---------- */
+.search-box{
+  display:flex; align-items:center; gap:8px; background:var(--panel);
+  border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:14px;
+}
+.search-box input{background:none; border:none; outline:none; flex:1; font-size:14px;}
+
+/* ---------- Forms ---------- */
+.field{margin-bottom:14px;}
+.field label{display:block; font-size:12.5px; color:var(--muted); margin-bottom:6px;}
+.field input, .field select, .field textarea{
+  width:100%; background:var(--panel-2); border:1px solid var(--line); border-radius:11px;
+  padding:11px 12px; font-size:14.5px; outline:none;
+}
+.field input:focus, .field select:focus, .field textarea:focus{border-color:var(--accent);}
+.field textarea{resize:vertical; min-height:70px;}
+.field .req{color:var(--danger);}
+.field-row{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+
+/* ---------- Modal ---------- */
+.modal-backdrop{
+  position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:50;
+  display:flex; align-items:flex-end; justify-content:center; backdrop-filter:blur(2px);
+}
+.modal-backdrop.center{align-items:center; padding:16px;}
+.modal{
+  background:var(--bg); width:100%; max-width:640px; max-height:92vh; overflow-y:auto;
+  border-radius:22px 22px 0 0; padding:22px 20px calc(20px + env(safe-area-inset-bottom));
+  border:1px solid var(--line); border-bottom:none; box-shadow:0 -20px 50px rgba(0,0,0,.4);
+}
+.modal-backdrop.center .modal{border-radius:18px; padding:22px; border-bottom:1px solid var(--line);}
+.modal-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;}
+.modal-head h3{font-family:var(--serif); font-size:19px; font-weight:700;}
+
+/* ---------- Toast ---------- */
+#toast{
+  position:fixed; bottom:126px; left:50%; transform:translateX(-50%) translateY(20px);
+  background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+  padding:11px 20px; border-radius:999px; font-size:13.5px; z-index:80; opacity:0;
+  transition:.25s; pointer-events:none; box-shadow:0 8px 24px rgba(0,0,0,.3);
+}
+#toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+/* ---------- Bottom nav (floating) ---------- */
+#bottomnav{
+  position:fixed; left:14px; right:14px; bottom:calc(12px + env(safe-area-inset-bottom));
+  z-index:30; background:rgba(16,21,31,.92); border:1px solid var(--line); border-radius:22px;
+  display:flex; padding:6px; box-shadow:0 18px 40px -14px rgba(0,0,0,.6);
+  backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+}
+[data-theme="light"] #bottomnav{ background:rgba(255,255,255,.92); }
+.nav-btn{
+  flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
+  background:none; border:none; padding:9px 2px; font-size:10.5px; color:var(--muted); cursor:pointer;
+  border-radius:15px; transition:background .15s;
+}
+.nav-btn .ic{font-size:19px;}
+.nav-btn.active{color:var(--text); background:linear-gradient(135deg, rgba(109,94,240,.22), rgba(139,111,245,.10));}
+
+/* ---------- Print ---------- */
+.print-sheet{display:none;}
+@media print{
+  body *{visibility:hidden;}
+  #print-area, #print-area *{visibility:visible;}
+  #print-area{position:absolute; top:0; left:0; width:100%; padding:20px; color:#000; background:#fff;}
+  #print-area .pclause{font-size:11.5px; margin-bottom:6px;}
+  #print-area .psig{border-top:1px solid #000; margin-top:40px; padding-top:6px; font-size:12px; text-align:center;}
+}
+#print-area{background:#fff; color:#000; font-family:var(--arabic);}
+
+.qr-box{display:flex; justify-content:center; padding:10px 0;}
+.notice{
+  background:rgba(250,204,21,.1); border:1px solid rgba(250,204,21,.3); color:var(--warn);
+  border-radius:10px; padding:11px 13px; font-size:12.5px; margin-bottom:14px; line-height:1.6;
+}
+.kv{display:flex; justify-content:space-between; font-size:13.5px; padding:8px 0; border-bottom:1px dashed var(--line);}
+.kv:last-child{border-bottom:none;}
+.kv .k{color:var(--muted);}
+.tabbar{display:flex; gap:6px; margin-bottom:14px; overflow-x:auto;}
+.tabbar button{
+  background:var(--panel-2); border:1px solid var(--line); color:var(--muted);
+  padding:8px 14px; border-radius:999px; font-size:12.5px; white-space:nowrap; cursor:pointer;
+}
+.tabbar button.active{background:var(--accent-grad); color:#fff; border-color:transparent; font-weight:700;}
+</style>
+</head>
+<body data-theme="dark">
+
+<div id="topbar">
+  <div class="topbar-row">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">ع</div>
+      <div class="brand-text">
+        <div class="brand-name">عقاري<span class="brand-pro">PRO</span></div>
+        <div class="brand-org" id="orgNameLabel">—</div>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="icon-btn" onclick="App.openSearch()" aria-label="بحث">🔎</button>
+      <button class="role-chip" id="roleChip" onclick="App.nav('settings')" title="الدور الحالي"></button>
+    </div>
+  </div>
+  <div class="screen-strip">
+    <span id="screenLabel">لوحة التحكم</span>
+    <span class="dot">·</span>
+    <span id="screenSub"></span>
+  </div>
+</div>
+
+<main id="app"></main>
+
+<button class="fab" id="fabBtn" style="display:none;" onclick="App.fabAction()">+</button>
+
+<nav id="bottomnav">
+  <button class="nav-btn" data-nav="dashboard" onclick="App.nav('dashboard')"><span class="ic">🏠</span>الرئيسية</button>
+  <button class="nav-btn" data-nav="properties" onclick="App.nav('properties')"><span class="ic">🏢</span>العقارات</button>
+  <button class="nav-btn" data-nav="tenants" onclick="App.nav('tenants')"><span class="ic">👤</span>المستأجرون</button>
+  <button class="nav-btn" data-nav="contracts" onclick="App.nav('contracts')"><span class="ic">📄</span>العقود</button>
+  <button class="nav-btn" data-nav="more" onclick="App.nav('more')"><span class="ic">⋯</span>المزيد</button>
+</nav>
+
+<div id="toast"></div>
+<div id="modalRoot"></div>
+<div class="print-sheet"><div id="print-area"></div></div>
+
+<script>
+/* =====================================================================
+   عقاري PRO — تطبيق إدارة عقارات وإيجارات (من جهة العميل بالكامل)
+   تخزين البيانات: localStorage فقط. لا يوجد خادم أو مزامنة حقيقية.
+   ===================================================================== */
+
+/* ---------------------- طبقة قاعدة البيانات المحلية ---------------------- */
+const DB_KEY = 'aqari_pro_db_v1';
+
+function uid(){ return (crypto.randomUUID ? crypto.randomUUID() : 'id-'+Date.now()+'-'+Math.random().toString(16).slice(2)); }
+
+function seedDB(){
+  return {
+    settings:{ orgName:'مكتبي العقاري', theme:'dark', currentRole:'owner', currency:'SDG' },
+    properties:[], units:[], tenants:[], contracts:[], payments:[],
+    maintenance:[], expenses:[], revenues:[], auditLog:[]
+  };
+}
+
+let DB = loadDB();
+
+function loadDB(){
+  try{
+    const raw = localStorage.getItem(DB_KEY);
+    if(!raw) return seedDB();
+    const parsed = JSON.parse(raw);
+    // دمج آمن مع البنية الافتراضية لتفادي كسر التطبيق عند تحديثات مستقبلية
+    return Object.assign(seedDB(), parsed);
+  }catch(e){
+    console.error('DB load failed, starting fresh', e);
+    return seedDB();
+  }
+}
+
+function saveDB(){
+  localStorage.setItem(DB_KEY, JSON.stringify(DB));
+}
+
+function audit(action, entity, entityId, extra){
+  DB.auditLog.unshift({ ts:new Date().toISOString(), action, entity, entityId, role:DB.settings.currentRole, extra:extra||null });
+  if(DB.auditLog.length > 500) DB.auditLog.length = 500; // سقف تخزيني محلي فقط
+}
+
+/* ---------------------- ثوابت ونصوص ---------------------- */
+const PROPERTY_TYPES = {apartment:'شقة', house:'منزل', building:'عمارة', shop:'محل', office:'مكتب', land:'أرض', warehouse:'مخزن'};
+const UNIT_STATUS = {available:{l:'متاحة', c:'b-green', dot:'🟢'}, rented:{l:'مؤجرة', c:'b-red', dot:'🔴'}, reserved:{l:'محجوزة', c:'b-yellow', dot:'🟡'}, maintenance:{l:'صيانة', c:'b-gray', dot:'⚫'}};
+const CONTRACT_STATUS = {draft:{l:'مسودة', c:'b-gray'}, active:{l:'ساري', c:'b-green'}, terminated:{l:'مفسوخ', c:'b-red'}, cancelled:{l:'ملغي', c:'b-gray'}};
+const PAYMENT_STATUS = {paid:{l:'مدفوع', c:'b-green'}, partial:{l:'جزئي', c:'b-yellow'}, due:{l:'مستحق', c:'b-teal'}, late:{l:'متأخر', c:'b-red'}, cancelled:{l:'ملغي', c:'b-gray'}};
+const PAYMENT_METHODS = {cash:'نقدي', bank_transfer:'تحويل بنكي', mobile_wallet:'محفظة إلكترونية', cheque:'شيك', other:'أخرى'};
+const MAINT_PRIORITY = {low:{l:'منخفضة',c:'b-gray'}, medium:{l:'متوسطة',c:'b-teal'}, high:{l:'عالية',c:'b-yellow'}, urgent:{l:'عاجلة',c:'b-red'}};
+const MAINT_STATUS = {open:{l:'مفتوح',c:'b-red'}, assigned:{l:'مسند',c:'b-yellow'}, in_progress:{l:'قيد التنفيذ',c:'b-teal'}, closed:{l:'مغلق',c:'b-green'}, cancelled:{l:'ملغي',c:'b-gray'}};
+const EXPENSE_CATS = ['كهرباء','مياه','غاز','حراسة','نظافة','ضرائب','صيانة','رواتب','وقود','أخرى'];
+const REVENUE_CATS = ['إيجارات','رسوم','غرامات','خدمات'];
+const ROLES = {owner:'المالك', admin:'مدير النظام', manager:'مدير', accountant:'محاسب', reception:'استقبال', maintenance:'صيانة', employee:'موظف', viewer:'مشاهدة فقط'};
+const ROLE_ICONS = {owner:'👑', admin:'🛡️', manager:'📋', accountant:'💰', reception:'📞', maintenance:'🔧', employee:'🧑‍💼', viewer:'👁️'};
+
+const CONTRACT_CLAUSES = [
+ 'صحة بيانات الطرفين (المؤجر والمستأجر) ومسؤولية كل طرف عن دقة بياناته.',
+ 'تحديد الوحدة المؤجرة بدقة (العقار، رقم الوحدة، المساحة).',
+ 'مدة عقد الإيجار من تاريخ البداية حتى تاريخ النهاية المذكورين أعلاه.',
+ 'قيمة الإيجار الإجمالية والدورية كما هو موضح في هذا العقد.',
+ 'طريقة السداد المتفق عليها بين الطرفين.',
+ 'مبلغ التأمين (إن وجد) وشروط استرداده عند انتهاء العقد.',
+ 'يلتزم المستأجر باستخدام الوحدة للغرض المحدد فقط دون غيره.',
+ 'يلتزم المستأجر بالمحافظة على العقار وعدم إلحاق الضرر به.',
+ 'لا يجوز إجراء أي تعديلات على الوحدة إلا بموافقة كتابية من المؤجر.',
+ 'يُمنع التأجير من الباطن أو التنازل عن العقد دون موافقة كتابية من المؤجر.',
+ 'تُحدَّد مسؤولية أعمال الصيانة بين الطرفين حسب الاتفاق الموضح في هذا العقد.',
+ 'تُحدَّد مسؤولية سداد فواتير الخدمات (كهرباء، مياه، إلخ) حسب الاتفاق.',
+ 'في حال التأخر عن السداد، تُطبَّق الإجراءات وفق القوانين السودانية السارية.',
+ 'يجوز إنهاء العقد وفق أحكام القانون المعمول به أو باتفاق مكتوب بين الطرفين.',
+ 'يلتزم المستأجر بتسليم الوحدة بحالة مناسبة عند انتهاء العقد، مع مراعاة الاستهلاك الطبيعي الناتج عن الاستخدام العادي.',
+ 'يتحمل المستأجر تعويض أي أضرار ناتجة عن سوء الاستخدام أو الإهمال.',
+ 'لا يُسأل أي طرف عن التأخير أو الإخلال الناتج عن ظروف قاهرة خارجة عن إرادته.',
+ 'يلتزم الطرفان بالحفاظ على سرية البيانات الشخصية الواردة في هذا العقد.',
+ 'تختص المحاكم السودانية بالنظر في أي نزاع ينشأ عن هذا العقد.',
+ 'يُعتبر هذا العقد بكامل بنوده اتفاقاً نهائياً بين الطرفين، ولا يجوز تعديله إلا بموافقة خطية موقعة من الطرفين.',
+ 'يقر الطرفان بقراءة وفهم جميع بنود هذا العقد قبل التوقيع عليه.',
+ 'توقيع الشهود على هذا العقد اختياري ولا يؤثر عدم توفره على صحة العقد بين الطرفين.',
+ 'أي مرفقات تُرفق بهذا العقد (صور، مستندات) تُعتبر جزءاً لا يتجزأ منه.',
+ 'يُرفق بهذا العقد محضر استلام وتسليم يوضح حالة الوحدة عند بدء وانتهاء العقد.',
+ 'تُرفق بهذا العقد قائمة بالأثاث والتجهيزات المسلَّمة مع الوحدة إن وُجدت.'
+];
+
+/* ---------------------- أدوات مساعدة عامة ---------------------- */
+function fmtMoney(n){ n = Number(n||0); return n.toLocaleString('ar-SD',{maximumFractionDigits:0}) + ' ' + (DB.settings.currency||'SDG'); }
+function fmtDate(d){ if(!d) return '—'; const dt=new Date(d); return dt.toLocaleDateString('ar-EG',{year:'numeric',month:'short',day:'numeric'}); }
+function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function el(html){ const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content.firstElementChild; }
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(window.__toastTimer); window.__toastTimer=setTimeout(()=>t.classList.remove('show'), 2200);
+}
+function genCode(len){ const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s=''; for(let i=0;i<len;i++) s+=chars[Math.floor(Math.random()*chars.length)]; return s; }
+
+/* ---------------------- محرك عام: كيانات، بحث، فرز ---------------------- */
+function findById(arr, id){ return arr.find(x=>x.id===id); }
+function propertyName(id){ const p=findById(DB.properties,id); return p ? p.name : '—'; }
+function unitLabel(id){ const u=findById(DB.units,id); if(!u) return '—'; return propertyName(u.propertyId)+' — وحدة '+u.unitNumber; }
+function tenantName(id){ const t=findById(DB.tenants,id); return t ? t.fullName : '—'; }
+function contractLabel(id){ const c=findById(DB.contracts,id); if(!c) return '—'; return c.number+' ('+tenantName(c.tenantId)+')'; }
+
+function unitsOfProperty(pid){ return DB.units.filter(u=>u.propertyId===pid); }
+
+function computeContractStatus(c){
+  if(c.status==='terminated' || c.status==='cancelled') return c.status;
+  const today = todayISO();
+  if(c.status==='draft') return 'draft';
+  if(today > c.endDate) return 'expired';
+  if(daysBetween(today, c.endDate) <= 30) return 'expiring_soon';
+  return 'active';
+}
+const CONTRACT_STATUS_FULL = Object.assign({}, CONTRACT_STATUS, {
+  expired:{l:'منتهي', c:'b-gray'}, expiring_soon:{l:'ينتهي قريباً', c:'b-yellow'}
+});
+
+function computePaymentStatus(p){
+  if(p.status==='cancelled') return 'cancelled';
+  if(p.amountPaid >= p.amountDue && p.amountDue>0) return 'paid';
+  if(p.amountPaid > 0 && p.amountPaid < p.amountDue) return (todayISO() > p.dueDate ? 'late' : 'partial');
+  return (todayISO() > p.dueDate ? 'late' : 'due');
+}
+
+/* ============================= التطبيق (App) ============================= */
+const App = {
+  route:'dashboard', params:{},
+
+  init(){
+    document.body.setAttribute('data-theme', DB.settings.theme||'dark');
+    this.updateBrand();
+    this.nav('dashboard');
+  },
+
+  updateBrand(){
+    document.getElementById('orgNameLabel').textContent = DB.settings.orgName || 'مكتبي العقاري';
+    const chip = document.getElementById('roleChip');
+    chip.textContent = ROLE_ICONS[DB.settings.currentRole] || '👤';
+    chip.title = 'الدور الحالي: ' + (ROLES[DB.settings.currentRole] || '—');
+  },
+
+  nav(route, params){
+    this.route = route; this.params = params||{};
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.nav===route || (route==='more' && b.dataset.nav==='more')));
+    const fab = document.getElementById('fabBtn');
+    fab.style.display = ['properties','tenants','contracts','payments','maintenance','finance'].includes(route) ? 'flex':'none';
+    this.render();
+    window.scrollTo(0,0);
+  },
+
+  setTitle(t, sub){
+    document.getElementById('screenLabel').textContent = t;
+    document.getElementById('screenSub').textContent = sub||'';
+  },
+
+  fabAction(){
+    const map = {properties:'property', tenants:'tenant', contracts:'contract', payments:'payment', maintenance:'maintenance', finance:'expense'};
+    const key = map[this.route];
+    if(key) Forms.open(key, null);
+  },
+
+  openSearch(){ Screens.searchModal(); },
+
+  render(){
+    const app = document.getElementById('app');
+    app.innerHTML = '';
+    const map = {
+      dashboard: Screens.dashboard, properties: Screens.properties, propertyDetail: Screens.propertyDetail,
+      tenants: Screens.tenants, tenantDetail: Screens.tenantDetail,
+      contracts: Screens.contracts, contractDetail: Screens.contractDetail,
+      payments: Screens.payments, maintenance: Screens.maintenance,
+      finance: Screens.finance, reports: Screens.reports, settings: Screens.settings, more: Screens.more
+    };
+    const fn = map[this.route] || Screens.dashboard;
+    app.appendChild(fn(this.params));
+  }
+};
+
+/* ============================= الشاشات (Screens) ============================= */
+const Screens = {
+
+  dashboard(){
+    App.setTitle('لوحة التحكم', todayISO());
+    const props = DB.properties.length;
+    const units = DB.units.length;
+    const rented = DB.units.filter(u=>u.status==='rented').length;
+    const available = DB.units.filter(u=>u.status==='available').length;
+    const tenants = DB.tenants.length;
+    const activeContracts = DB.contracts.filter(c=>computeContractStatus(c)==='active' || computeContractStatus(c)==='expiring_soon').length;
+    const revenue = DB.revenues.reduce((s,r)=>s+Number(r.amount||0),0) + DB.payments.reduce((s,p)=>s+Number(p.amountPaid||0),0);
+    const expense = DB.expenses.reduce((s,r)=>s+Number(r.amount||0),0);
+    const latePayments = DB.payments.filter(p=>computePaymentStatus(p)==='late');
+    const openMaint = DB.maintenance.filter(m=>m.status==='open'||m.status==='assigned'||m.status==='in_progress').length;
+    const expiringSoon = DB.contracts.filter(c=>computeContractStatus(c)==='expiring_soon');
+
+    const wrap = el('<div></div>');
+    wrap.appendChild(el(`
+      <div class="stat-grid">
+        <div class="stat"><div class="ic-badge">🏢</div><div class="n">${props}</div><div class="l">عدد العقارات</div></div>
+        <div class="stat"><div class="ic-badge">🚪</div><div class="n">${units}</div><div class="l">عدد الوحدات</div></div>
+        <div class="stat"><div class="ic-badge">🔑</div><div class="n">${rented}</div><div class="l">وحدات مؤجرة</div></div>
+        <div class="stat"><div class="ic-badge">🟢</div><div class="n">${available}</div><div class="l">وحدات متاحة</div></div>
+        <div class="stat"><div class="ic-badge">👤</div><div class="n">${tenants}</div><div class="l">المستأجرون</div></div>
+        <div class="stat"><div class="ic-badge">📄</div><div class="n">${activeContracts}</div><div class="l">عقود سارية</div></div>
+        <div class="stat gold"><div class="ic-badge">💰</div><div class="n" style="font-size:16px">${fmtMoney(revenue)}</div><div class="l">إجمالي الإيرادات</div></div>
+        <div class="stat"><div class="ic-badge">📉</div><div class="n" style="font-size:16px">${fmtMoney(expense)}</div><div class="l">إجمالي المصروفات</div></div>
+        <div class="stat ${latePayments.length?'warn':''}"><div class="ic-badge">⏰</div><div class="n">${latePayments.length}</div><div class="l">دفعات متأخرة</div></div>
+        <div class="stat ${openMaint?'warn':''}"><div class="ic-badge">🛠️</div><div class="n">${openMaint}</div><div class="l">بلاغات صيانة مفتوحة</div></div>
+      </div>
+    `));
+
+    if(expiringSoon.length){
+      const s = el('<div class="section-title">عقود تنتهي قريباً (30 يوم)</div>');
+      wrap.appendChild(s);
+      const card = el('<div class="card"></div>');
+      expiringSoon.slice(0,5).forEach(c=>{
+        card.appendChild(el(`
+          <div class="list-row" onclick="App.nav('contractDetail',{id:'${c.id}'})">
+            <div class="main"><div class="t">${esc(c.number)}</div><div class="s">${esc(tenantName(c.tenantId))} — ينتهي ${fmtDate(c.endDate)}</div></div>
+            <span class="badge b-yellow">قريباً</span>
+          </div>`));
+      });
+      wrap.appendChild(card);
+    }
+
+    if(latePayments.length){
+      wrap.appendChild(el('<div class="section-title">دفعات متأخرة</div>'));
+      const card = el('<div class="card"></div>');
+      latePayments.slice(0,5).forEach(p=>{
+        card.appendChild(el(`
+          <div class="list-row" onclick="App.nav('payments')">
+            <div class="main"><div class="t">${esc(contractLabel(p.contractId))}</div><div class="s">استحق ${fmtDate(p.dueDate)} — ${fmtMoney(p.amountDue-p.amountPaid)}</div></div>
+            <span class="badge b-red">متأخر</span>
+          </div>`));
+      });
+      wrap.appendChild(card);
+    }
+
+    wrap.appendChild(el('<div class="section-title">اختصارات</div>'));
+    const quick = el('<div class="card" style="display:flex;flex-wrap:wrap;gap:8px;"></div>');
+    [['عقار جديد','property'],['مستأجر جديد','tenant'],['عقد جديد','contract'],['تسجيل دفعة','payment'],['بلاغ صيانة','maintenance']].forEach(([label,key])=>{
+      quick.appendChild(el(`<button class="btn secondary small" onclick="Forms.open('${key}',null)">+ ${label}</button>`));
+    });
+    wrap.appendChild(quick);
+    return wrap;
+  },
+
+  properties(){
+    App.setTitle('العقارات', DB.properties.length+' عقار');
+    const wrap = el('<div></div>');
+    wrap.appendChild(Screens._searchBox('ابحث بالاسم أو الرقم أو المدينة...', q=>{
+      const list = DB.properties.filter(p=> !q || (p.name+p.code+p.city).toLowerCase().includes(q.toLowerCase()));
+      Screens._renderPropertyList(list, wrap);
+    }));
+    const listHolder = el('<div id="propListHolder"></div>');
+    wrap.appendChild(listHolder);
+    Screens._renderPropertyList(DB.properties, wrap);
+    return wrap;
+  },
+
+  _renderPropertyList(list, wrap){
+    const holder = wrap.querySelector('#propListHolder');
+    holder.innerHTML = '';
+    if(!list.length){ holder.appendChild(el('<div class="empty">لا توجد عقارات بعد. اضغط + لإضافة أول عقار.</div>')); return; }
+    const card = el('<div class="card"></div>');
+    list.forEach(p=>{
+      const u = unitsOfProperty(p.id);
+      const rented = u.filter(x=>x.status==='rented').length;
+      card.appendChild(el(`
+        <div class="list-row" onclick="App.nav('propertyDetail',{id:'${p.id}'})">
+          <div class="main"><div class="t">${esc(p.name)}</div><div class="s">${esc(PROPERTY_TYPES[p.type]||p.type)} · ${esc(p.city||'')} · ${u.length} وحدة</div></div>
+          <span class="badge b-teal">${rented}/${u.length} مؤجرة</span>
+        </div>`));
+    });
+    holder.appendChild(card);
+  },
+
+  propertyDetail(params){
+    const p = findById(DB.properties, params.id);
+    if(!p){ App.nav('properties'); return el('<div></div>'); }
+    App.setTitle(p.name, PROPERTY_TYPES[p.type]);
+    const wrap = el('<div></div>');
+    wrap.appendChild(el(`
+      <div class="card">
+        <div class="kv"><span class="k">رقم العقار</span><span>${esc(p.code)}</span></div>
+        <div class="kv"><span class="k">المدينة / الحي</span><span>${esc(p.city||'—')} ${p.district?('/ '+esc(p.district)):''}</span></div>
+        <div class="kv"><span class="k">العنوان</span><span>${esc(p.address||'—')}</span></div>
+        <div class="kv"><span class="k">رقم القطعة</span><span>${esc(p.plotNumber||'—')}</span></div>
+        <div class="kv"><span class="k">المساحة</span><span>${p.area? p.area+' م²':'—'}</span></div>
+        <div class="kv"><span class="k">الطوابق / المواقف</span><span>${p.floors||'—'} / ${p.parking||'—'}</span></div>
+        ${p.notes?('<div class="kv"><span class="k">ملاحظات</span><span>'+esc(p.notes)+'</span></div>'):''}
+        <div class="btn-row">
+          <button class="btn secondary small" onclick="Forms.open('property','${p.id}')">تعديل</button>
+          <button class="btn danger small" onclick="Actions.deleteHard('properties','${p.id}')">حذف</button>
+        </div>
+      </div>
+    `));
+    wrap.appendChild(el('<div class="section-title">الوحدات</div>'));
+    const units = unitsOfProperty(p.id);
+    const uCard = el('<div class="card"></div>');
+    if(!units.length){ uCard.appendChild(el('<div class="empty">لا توجد وحدات في هذا العقار بعد.</div>')); }
+    units.forEach(u=>{
+      const st = UNIT_STATUS[u.status];
+      uCard.appendChild(el(`
+        <div class="list-row" onclick="Forms.open('unit','${u.id}')">
+          <div class="main"><div class="t">وحدة ${esc(u.unitNumber)}</div><div class="s">${u.rooms||0} غرف · ${fmtMoney(u.price)}</div></div>
+          <span class="badge ${st.c}">${st.dot} ${st.l}</span>
+        </div>`));
+    });
+    wrap.appendChild(uCard);
+    wrap.appendChild(el(`<button class="btn secondary" style="margin-top:10px" onclick="Forms.open('unit', null, {propertyId:'${p.id}'})">+ إضافة وحدة</button>`));
+    return wrap;
+  },
+
+  tenants(){
+    App.setTitle('المستأجرون', DB.tenants.length+' مستأجر');
+    const wrap = el('<div></div>');
+    wrap.appendChild(Screens._searchBox('ابحث بالاسم أو الهاتف أو الرقم الوطني...', q=>{
+      const list = DB.tenants.filter(t=> !q || (t.fullName+t.phone+(t.nationalId||'')).toLowerCase().includes(q.toLowerCase()));
+      Screens._renderTenantList(list, wrap);
+    }));
+    wrap.appendChild(el('<div id="tenListHolder"></div>'));
+    Screens._renderTenantList(DB.tenants, wrap);
+    return wrap;
+  },
+  _renderTenantList(list, wrap){
+    const holder = wrap.querySelector('#tenListHolder'); holder.innerHTML='';
+    if(!list.length){ holder.appendChild(el('<div class="empty">لا يوجد مستأجرون بعد.</div>')); return; }
+    const card = el('<div class="card"></div>');
+    list.forEach(t=>{
+      card.appendChild(el(`
+        <div class="list-row" onclick="App.nav('tenantDetail',{id:'${t.id}'})">
+          <div class="main"><div class="t">${esc(t.fullName)}</div><div class="s">${esc(t.phone||'')}</div></div>
+          <span class="badge b-gray">${esc(t.nationality||'')}</span>
+        </div>`));
+    });
+    holder.appendChild(card);
+  },
+
+  tenantDetail(params){
+    const t = findById(DB.tenants, params.id);
+    if(!t){ App.nav('tenants'); return el('<div></div>'); }
+    App.setTitle(t.fullName, 'ملف المستأجر');
+    const wrap = el('<div></div>');
+    wrap.appendChild(el(`
+      <div class="card">
+        <div class="kv"><span class="k">الهاتف</span><span>${esc(t.phone||'—')}</span></div>
+        <div class="kv"><span class="k">واتساب</span><span>${esc(t.whatsapp||'—')}</span></div>
+        <div class="kv"><span class="k">البريد</span><span>${esc(t.email||'—')}</span></div>
+        <div class="kv"><span class="k">الرقم الوطني</span><span>${esc(t.nationalId||'—')}</span></div>
+        <div class="kv"><span class="k">رقم الجواز</span><span>${esc(t.passport||'—')}</span></div>
+        <div class="kv"><span class="k">جهة العمل</span><span>${esc(t.employer||'—')}</span></div>
+        <div class="kv"><span class="k">للطوارئ</span><span>${esc(t.emergency||'—')}</span></div>
+        <div class="btn-row">
+          <button class="btn secondary small" onclick="Forms.open('tenant','${t.id}')">تعديل</button>
+          <button class="btn danger small" onclick="Actions.deleteHard('tenants','${t.id}')">حذف</button>
+        </div>
+      </div>
+    `));
+    const cons = DB.contracts.filter(c=>c.tenantId===t.id);
+    wrap.appendChild(el('<div class="section-title">عقود المستأجر</div>'));
+    const cCard = el('<div class="card"></div>');
+    if(!cons.length) cCard.appendChild(el('<div class="empty">لا توجد عقود.</div>'));
+    cons.forEach(c=>{
+      const st = CONTRACT_STATUS_FULL[computeContractStatus(c)];
+      cCard.appendChild(el(`
+        <div class="list-row" onclick="App.nav('contractDetail',{id:'${c.id}'})">
+          <div class="main"><div class="t">${esc(c.number)}</div><div class="s">${esc(unitLabel(c.unitId))}</div></div>
+          <span class="badge ${st.c}">${st.l}</span>
+        </div>`));
+    });
+    wrap.appendChild(cCard);
+    return wrap;
+  },
+
+  contracts(){
+    App.setTitle('العقود', DB.contracts.length+' عقد');
+    const wrap = el('<div></div>');
+    const card = el('<div class="card"></div>');
+    const activeContracts = DB.contracts.filter(c=>!c._deleted);
+    if(!activeContracts.length) card.appendChild(el('<div class="empty">لا توجد عقود بعد. اضغط + لإنشاء أول عقد.</div>'));
+    activeContracts.slice().sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).forEach(c=>{
+      const st = CONTRACT_STATUS_FULL[computeContractStatus(c)];
+      card.appendChild(el(`
+        <div class="list-row" onclick="App.nav('contractDetail',{id:'${c.id}'})">
+          <div class="main"><div class="t">${esc(c.number)} — ${esc(tenantName(c.tenantId))}</div><div class="s">${esc(unitLabel(c.unitId))} · حتى ${fmtDate(c.endDate)}</div></div>
+          <span class="badge ${st.c}">${st.l}</span>
+        </div>`));
+    });
+    wrap.appendChild(card);
+    return wrap;
+  },
+
+  contractDetail(params){
+    const c = findById(DB.contracts, params.id);
+    if(!c){ App.nav('contracts'); return el('<div></div>'); }
+    App.setTitle(c.number, 'تفاصيل العقد');
+    const st = CONTRACT_STATUS_FULL[computeContractStatus(c)];
+    const wrap = el('<div></div>');
+    wrap.appendChild(el(`
+      <div class="card">
+        <div class="kv"><span class="k">الحالة</span><span class="badge ${st.c}">${st.l}</span></div>
+        <div class="kv"><span class="k">الوحدة</span><span>${esc(unitLabel(c.unitId))}</span></div>
+        <div class="kv"><span class="k">المستأجر</span><span>${esc(tenantName(c.tenantId))}</span></div>
+        <div class="kv"><span class="k">المدة</span><span>${fmtDate(c.startDate)} → ${fmtDate(c.endDate)}</span></div>
+        <div class="kv"><span class="k">قيمة الإيجار</span><span>${fmtMoney(c.rent)}</span></div>
+        <div class="kv"><span class="k">التأمين</span><span>${fmtMoney(c.deposit)}</span></div>
+        <div class="kv"><span class="k">طريقة السداد</span><span>${esc(PAYMENT_METHODS[c.paymentMethod]||'—')}</span></div>
+        <div class="kv"><span class="k">رمز التحقق</span><span style="font-family:var(--mono)">${esc(c.verificationCode)}</span></div>
+        <div class="btn-row">
+          <button class="btn small" onclick="Documents.printContract('${c.id}')">🖨️ طباعة / PDF</button>
+          <button class="btn secondary small" onclick="Forms.open('contract','${c.id}')">تعديل</button>
+        </div>
+        <div class="btn-row">
+          <button class="btn secondary small" onclick="Actions.shareWhatsapp('contract','${c.id}')">مشاركة واتساب</button>
+          <button class="btn danger small" onclick="Actions.softDelete('contracts','${c.id}')">أرشفة</button>
+        </div>
+      </div>
+    `));
+    const pays = DB.payments.filter(p=>p.contractId===c.id);
+    wrap.appendChild(el('<div class="section-title">جدول الدفعات</div>'));
+    const pCard = el('<div class="card"></div>');
+    if(!pays.length) pCard.appendChild(el('<div class="empty">لا توجد دفعات مسجلة.</div>'));
+    pays.forEach(p=>{
+      const pst = PAYMENT_STATUS[computePaymentStatus(p)];
+      pCard.appendChild(el(`
+        <div class="list-row" onclick="Forms.open('payment','${p.id}')">
+          <div class="main"><div class="t">${fmtMoney(p.amountDue)}</div><div class="s">استحقاق ${fmtDate(p.dueDate)}</div></div>
+          <span class="badge ${pst.c}">${pst.l}</span>
+        </div>`));
+    });
+    wrap.appendChild(pCard);
+    return wrap;
+  },
+
+  payments(){
+    App.setTitle('الدفعات', DB.payments.length+' دفعة');
+    const wrap = el('<div></div>');
+    const tabs = ['الكل','مستحقة','متأخرة','مدفوعة'];
+    let active = wrap.dataset.filter = 'الكل';
+    const tabbar = el('<div class="tabbar"></div>');
+    tabs.forEach(t=>{
+      const b = el(`<button class="${t==='الكل'?'active':''}">${t}</button>`);
+      b.onclick = ()=>{ tabbar.querySelectorAll('button').forEach(x=>x.classList.remove('active')); b.classList.add('active'); Screens._renderPayments(t, wrap); };
+      tabbar.appendChild(b);
+    });
+    wrap.appendChild(tabbar);
+    wrap.appendChild(el('<div id="payListHolder"></div>'));
+    Screens._renderPayments('الكل', wrap);
+    return wrap;
+  },
+  _renderPayments(filter, wrap){
+    const holder = wrap.querySelector('#payListHolder'); holder.innerHTML='';
+    let list = DB.payments.filter(p=>!p._deleted);
+    if(filter==='مستحقة') list = list.filter(p=>computePaymentStatus(p)==='due');
+    if(filter==='متأخرة') list = list.filter(p=>computePaymentStatus(p)==='late');
+    if(filter==='مدفوعة') list = list.filter(p=>computePaymentStatus(p)==='paid');
+    list = list.slice().sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+    const card = el('<div class="card"></div>');
+    if(!list.length) card.appendChild(el('<div class="empty">لا توجد دفعات في هذا التصنيف.</div>'));
+    list.forEach(p=>{
+      const pst = PAYMENT_STATUS[computePaymentStatus(p)];
+      card.appendChild(el(`
+        <div class="list-row" onclick="Forms.open('payment','${p.id}')">
+          <div class="main"><div class="t">${esc(contractLabel(p.contractId))}</div><div class="s">استحقاق ${fmtDate(p.dueDate)} — ${fmtMoney(p.amountDue)}</div></div>
+          <span class="badge ${pst.c}">${pst.l}</span>
+        </div>`));
+    });
+    holder.appendChild(card);
+  },
+
+  maintenance(){
+    App.setTitle('الصيانة', DB.maintenance.length+' بلاغ');
+    const wrap = el('<div></div>');
+    const card = el('<div class="card"></div>');
+    if(!DB.maintenance.length) card.appendChild(el('<div class="empty">لا توجد بلاغات صيانة.</div>'));
+    DB.maintenance.slice().sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).forEach(m=>{
+      const pr = MAINT_PRIORITY[m.priority], st = MAINT_STATUS[m.status];
+      card.appendChild(el(`
+        <div class="list-row" onclick="Forms.open('maintenance','${m.id}')">
+          <div class="main"><div class="t">${esc(m.title)}</div><div class="s">${esc(unitLabel(m.unitId))}</div></div>
+          <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
+            <span class="badge ${pr.c}">${pr.l}</span><span class="badge ${st.c}">${st.l}</span>
+          </div>
+        </div>`));
+    });
+    wrap.appendChild(card);
+    return wrap;
+  },
+
+  finance(){
+    App.setTitle('المالية', 'مصروفات وإيرادات');
+    const wrap = el('<div></div>');
+    const revenue = DB.revenues.reduce((s,r)=>s+Number(r.amount||0),0) + DB.payments.reduce((s,p)=>s+Number(p.amountPaid||0),0);
+    const expense = DB.expenses.reduce((s,r)=>s+Number(r.amount||0),0);
+    wrap.appendChild(el(`
+      <div class="stat-grid">
+        <div class="stat"><div class="n" style="font-size:16px;color:var(--ok)">${fmtMoney(revenue)}</div><div class="l">إجمالي الإيرادات</div></div>
+        <div class="stat"><div class="n" style="font-size:16px;color:var(--danger)">${fmtMoney(expense)}</div><div class="l">إجمالي المصروفات</div></div>
+        <div class="stat" style="grid-column:1/-1;"><div class="n">${fmtMoney(revenue-expense)}</div><div class="l">صافي الربح</div></div>
+      </div>
+    `));
+    const tabbar = el('<div class="tabbar" style="margin-top:14px;"><button class="active">المصروفات</button><button>الإيرادات</button></div>');
+    wrap.appendChild(tabbar);
+    wrap.appendChild(el('<div id="finListHolder"></div>'));
+    const renderList = (key, cats)=>{
+      const holder = wrap.querySelector('#finListHolder'); holder.innerHTML='';
+      const list = DB[key].filter(x=>!x._deleted).slice().sort((a,b)=>b.date.localeCompare(a.date));
+      const card = el('<div class="card"></div>');
+      if(!list.length) card.appendChild(el('<div class="empty">لا توجد سجلات بعد.</div>'));
+      list.forEach(x=>{
+        card.appendChild(el(`
+          <div class="list-row" onclick="Forms.open('${key.slice(0,-1)}','${x.id}')">
+            <div class="main"><div class="t">${esc(x.category)}</div><div class="s">${fmtDate(x.date)} ${x.propertyId?'· '+esc(propertyName(x.propertyId)):''}</div></div>
+            <span class="badge ${key==='expenses'?'b-red':'b-green'}">${fmtMoney(x.amount)}</span>
+          </div>`));
+      });
+      holder.appendChild(card);
+      holder.appendChild(el(`<button class="btn secondary" style="margin-top:10px" onclick="Forms.open('${key.slice(0,-1)}',null)">+ إضافة ${key==='expenses'?'مصروف':'إيراد'}</button>`));
+    };
+    tabbar.children[0].onclick=()=>{tabbar.children[0].classList.add('active');tabbar.children[1].classList.remove('active');renderList('expenses');};
+    tabbar.children[1].onclick=()=>{tabbar.children[1].classList.add('active');tabbar.children[0].classList.remove('active');renderList('revenues');};
+    renderList('expenses');
+    return wrap;
+  },
+
+  reports(){
+    App.setTitle('التقارير', '');
+    const wrap = el('<div></div>');
+    const revenue = DB.revenues.reduce((s,r)=>s+Number(r.amount||0),0) + DB.payments.reduce((s,p)=>s+Number(p.amountPaid||0),0);
+    const expense = DB.expenses.reduce((s,r)=>s+Number(r.amount||0),0);
+    const vacant = DB.units.filter(u=>u.status==='available').length;
+    const lateP = DB.payments.filter(p=>computePaymentStatus(p)==='late').length;
+    const expiring = DB.contracts.filter(c=>computeContractStatus(c)==='expiring_soon').length;
+    const openM = DB.maintenance.filter(m=>['open','assigned','in_progress'].includes(m.status)).length;
+    wrap.appendChild(el(`
+      <div class="card">
+        <div class="kv"><span class="k">إجمالي الإيرادات</span><span>${fmtMoney(revenue)}</span></div>
+        <div class="kv"><span class="k">إجمالي المصروفات</span><span>${fmtMoney(expense)}</span></div>
+        <div class="kv"><span class="k">صافي الربح</span><span>${fmtMoney(revenue-expense)}</span></div>
+        <div class="kv"><span class="k">وحدات شاغرة</span><span>${vacant}</span></div>
+        <div class="kv"><span class="k">دفعات متأخرة</span><span>${lateP}</span></div>
+        <div class="kv"><span class="k">عقود تنتهي قريباً</span><span>${expiring}</span></div>
+        <div class="kv"><span class="k">بلاغات صيانة مفتوحة</span><span>${openM}</span></div>
+        <div class="btn-row">
+          <button class="btn small" onclick="Documents.printReport()">🖨️ طباعة التقرير</button>
+          <button class="btn secondary small" onclick="Documents.exportCSV()">تصدير CSV</button>
+        </div>
+      </div>
+    `));
+    return wrap;
+  },
+
+  settings(){
+    App.setTitle('الإعدادات', '');
+    const s = DB.settings;
+    const wrap = el('<div></div>');
+    wrap.appendChild(el(`
+      <div class="card">
+        <div class="field"><label>اسم المكتب / المؤسسة</label><input id="setOrgName" value="${esc(s.orgName)}"></div>
+        <div class="field"><label>الدور الحالي (محاكاة عرض فقط — لا يوفر حماية حقيقية)</label>
+          <select id="setRole">${Object.entries(ROLES).map(([k,v])=>`<option value="${k}" ${s.currentRole===k?'selected':''}>${v}</option>`).join('')}</select>
+        </div>
+        <button class="btn" onclick="Actions.saveSettings()">حفظ الإعدادات</button>
+      </div>
+      <div class="notice">⚠ هذا التطبيق يعمل بالكامل من داخل المتصفح ويخزّن البيانات محلياً على هذا الجهاز فقط. لا يوجد تسجيل دخول حقيقي، ولا مزامنة بين الأجهزة، ولا تشفير خادم — لأن ذلك يتطلب خادم حقيقي (Backend) لا يمكن توفيره داخل ملف HTML واحد.</div>
+      <div class="card">
+        <div class="section-title" style="margin-top:0">المظهر</div>
+        <div class="btn-row">
+          <button class="btn secondary" onclick="Actions.setTheme('dark')">داكن</button>
+          <button class="btn secondary" onclick="Actions.setTheme('light')">فاتح</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="section-title" style="margin-top:0">النسخ الاحتياطي</div>
+        <div class="btn-row">
+          <button class="btn secondary" onclick="Actions.exportBackup()">⬇️ تصدير نسخة JSON</button>
+        </div>
+        <div class="field" style="margin-top:10px"><label>استيراد نسخة احتياطية</label><input type="file" id="restoreFile" accept="application/json"></div>
+        <button class="btn secondary" onclick="Actions.importBackup()">استعادة من ملف</button>
+      </div>
+    `));
+    return wrap;
+  },
+
+  more(){
+    App.setTitle('المزيد', '');
+    const wrap = el('<div></div>');
+    const items = [
+      ['💰','الدفعات','payments'], ['🛠️','الصيانة','maintenance'], ['📊','المالية','finance'],
+      ['📈','التقارير','reports'], ['⚙️','الإعدادات','settings']
+    ];
+    const card = el('<div class="card"></div>');
+    items.forEach(([ic,label,route])=>{
+      card.appendChild(el(`<div class="list-row" onclick="App.nav('${route}')"><div class="main"><div class="t">${ic} ${label}</div></div><span>›</span></div>`));
+    });
+    wrap.appendChild(card);
+    return wrap;
+  },
+
+  _searchBox(placeholder, onInput){
+    const box = el(`<div class="search-box">🔎<input placeholder="${esc(placeholder)}"></div>`);
+    box.querySelector('input').addEventListener('input', e=>onInput(e.target.value));
+    return box;
+  },
+
+  searchModal(){
+    const body = el(`
+      <div class="field"><input id="globalSearch" placeholder="ابحث في كل شيء: اسم، هاتف، رقم عقد..." autofocus></div>
+      <div id="globalSearchResults"></div>
+    `);
+    Modal.open('بحث شامل', body, {center:true});
+    const input = body.querySelector('#globalSearch');
+    const resHolder = body.querySelector('#globalSearchResults');
+    input.addEventListener('input', ()=>{
+      const q = input.value.trim().toLowerCase();
+      resHolder.innerHTML = '';
+      if(!q) return;
+      const results = [];
+      DB.tenants.forEach(t=>{ if((t.fullName+t.phone+(t.nationalId||'')).toLowerCase().includes(q)) results.push({label:'👤 '+t.fullName, sub:t.phone, action:()=>{Modal.close(); App.nav('tenantDetail',{id:t.id});}}); });
+      DB.properties.forEach(p=>{ if((p.name+p.code+p.city).toLowerCase().includes(q)) results.push({label:'🏢 '+p.name, sub:p.code, action:()=>{Modal.close(); App.nav('propertyDetail',{id:p.id});}}); });
+      DB.contracts.forEach(c=>{ if((c.number).toLowerCase().includes(q)) results.push({label:'📄 '+c.number, sub:tenantName(c.tenantId), action:()=>{Modal.close(); App.nav('contractDetail',{id:c.id});}}); });
+      DB.units.forEach(u=>{ if((u.unitNumber||'').toLowerCase().includes(q)) results.push({label:'🚪 وحدة '+u.unitNumber, sub:propertyName(u.propertyId), action:()=>{Modal.close(); Forms.open('unit',u.id);}}); });
+      if(!results.length){ resHolder.appendChild(el('<div class="empty">لا نتائج.</div>')); return; }
+      const card = el('<div class="card" style="margin-top:12px;"></div>');
+      results.slice(0,20).forEach(r=>{
+        const row = el(`<div class="list-row"><div class="main"><div class="t">${esc(r.label)}</div><div class="s">${esc(r.sub||'')}</div></div></div>`);
+        row.onclick = r.action;
+        card.appendChild(row);
+      });
+      resHolder.appendChild(card);
+    });
+  }
+};
+
+/* ============================= النوافذ المنبثقة (Modal) ============================= */
+const Modal = {
+  open(title, bodyEl, opts){
+    opts = opts||{};
+    const root = document.getElementById('modalRoot');
+    root.innerHTML = '';
+    const backdrop = el(`<div class="modal-backdrop ${opts.center?'center':''}"></div>`);
+    const modal = el(`<div class="modal"><div class="modal-head"><h3></h3><button class="icon-btn">✕</button></div><div class="modal-body"></div></div>`);
+    modal.querySelector('h3').textContent = title;
+    modal.querySelector('.modal-body').appendChild(bodyEl);
+    modal.querySelector('.icon-btn').onclick = Modal.close;
+    backdrop.appendChild(modal);
+    backdrop.addEventListener('click', e=>{ if(e.target===backdrop) Modal.close(); });
+    root.appendChild(backdrop);
+  },
+  close(){ document.getElementById('modalRoot').innerHTML=''; }
+};
+
+/* ============================= النماذج (Forms) ============================= */
+const Forms = {
+  open(type, id, defaults){
+    const map = {
+      property: Forms.property, unit: Forms.unit, tenant: Forms.tenant, contract: Forms.contract,
+      payment: Forms.payment, maintenance: Forms.maintenance, expense: ()=>Forms.finance('expenses'),
+      revenue: ()=>Forms.finance('revenues')
+    };
+    const fn = map[type];
+    if(fn) fn(id, defaults);
+  },
+
+  _field(label, inputHtml, required){
+    return `<div class="field"><label>${esc(label)}${required?' <span class="req">*</span>':''}</label>${inputHtml}</div>`;
+  },
+  _select(id, options, selected, placeholder){
+    let html = `<select id="${id}">`;
+    if(placeholder) html += `<option value="">${esc(placeholder)}</option>`;
+    options.forEach(([v,l])=> html += `<option value="${v}" ${selected===v?'selected':''}>${esc(l)}</option>`);
+    html += `</select>`;
+    return html;
+  },
+
+  property(id){
+    const p = id ? findById(DB.properties,id) : {code:'PR-'+genCode(4), name:'', type:'apartment', city:'', district:'', address:'', plotNumber:'', area:'', floors:'', parking:'', notes:''};
+    const body = el(`<div>
+      ${Forms._field('رقم العقار', `<input id="f_code" value="${esc(p.code)}">`, true)}
+      ${Forms._field('اسم العقار', `<input id="f_name" value="${esc(p.name)}">`, true)}
+      ${Forms._field('نوع العقار', Forms._select('f_type', Object.entries(PROPERTY_TYPES), p.type), true)}
+      <div class="field-row">
+        ${Forms._field('المدينة', `<input id="f_city" value="${esc(p.city)}">`, true)}
+        ${Forms._field('الحي', `<input id="f_district" value="${esc(p.district||'')}">`)}
+      </div>
+      ${Forms._field('العنوان', `<textarea id="f_address">${esc(p.address||'')}</textarea>`)}
+      <div class="field-row">
+        ${Forms._field('رقم القطعة', `<input id="f_plot" value="${esc(p.plotNumber||'')}">`)}
+        ${Forms._field('المساحة (م²)', `<input id="f_area" type="number" value="${esc(p.area||'')}">`)}
+      </div>
+      <div class="field-row">
+        ${Forms._field('عدد الطوابق', `<input id="f_floors" type="number" value="${esc(p.floors||'')}">`)}
+        ${Forms._field('عدد المواقف', `<input id="f_parking" type="number" value="${esc(p.parking||'')}">`)}
+      </div>
+      ${Forms._field('ملاحظات', `<textarea id="f_notes">${esc(p.notes||'')}</textarea>`)}
+      <button class="btn" id="saveBtn">حفظ العقار</button>
+    </div>`);
+    Modal.open(id?'تعديل عقار':'عقار جديد', body);
+    body.querySelector('#saveBtn').onclick = ()=>{
+      const name = body.querySelector('#f_name').value.trim();
+      const city = body.querySelector('#f_city').value.trim();
+      if(!name || !city){ toast('الاسم والمدينة مطلوبان'); return; }
+      const obj = {
+        id: id || uid(), code: body.querySelector('#f_code').value.trim(), name,
+        type: body.querySelector('#f_type').value, city, district: body.querySelector('#f_district').value.trim(),
+        address: body.querySelector('#f_address').value.trim(), plotNumber: body.querySelector('#f_plot').value.trim(),
+        area: body.querySelector('#f_area').value, floors: body.querySelector('#f_floors').value,
+        parking: body.querySelector('#f_parking').value, notes: body.querySelector('#f_notes').value.trim(),
+        createdAt: (id? p.createdAt : new Date().toISOString())
+      };
+      if(id){ Object.assign(findById(DB.properties,id), obj); audit('update','property',id); }
+      else { DB.properties.push(obj); audit('create','property',obj.id); }
+      saveDB(); Modal.close(); toast('تم حفظ العقار'); App.nav(id?'propertyDetail':'properties', id?{id}:null);
+    };
+  },
+
+  unit(id, defaults){
+    const u = id ? findById(DB.units,id) : {propertyId:(defaults&&defaults.propertyId)||'', unitNumber:'', floorNumber:'', rooms:'', bathrooms:'', kitchen:'yes', area:'', price:'', status:'available', notes:''};
+    const body = el(`<div>
+      ${Forms._field('العقار', Forms._select('f_property', DB.properties.map(p=>[p.id,p.name]), u.propertyId, 'اختر العقار'), true)}
+      <div class="field-row">
+        ${Forms._field('رقم الوحدة', `<input id="f_number" value="${esc(u.unitNumber)}">`, true)}
+        ${Forms._field('الدور', `<input id="f_floor" value="${esc(u.floorNumber||'')}">`)}
+      </div>
+      <div class="field-row">
+        ${Forms._field('عدد الغرف', `<input id="f_rooms" type="number" value="${esc(u.rooms||'')}">`)}
+        ${Forms._field('عدد الحمامات', `<input id="f_bath" type="number" value="${esc(u.bathrooms||'')}">`)}
+      </div>
+      <div class="field-row">
+        ${Forms._field('المساحة (م²)', `<input id="f_area" type="number" value="${esc(u.area||'')}">`)}
+        ${Forms._field('السعر', `<input id="f_price" type="number" value="${esc(u.price||'')}">`, true)}
+      </div>
+      ${Forms._field('حالة الوحدة', Forms._select('f_status', Object.entries(UNIT_STATUS).map(([k,v])=>[k,v.l]), u.status))}
+      ${Forms._field('ملاحظات', `<textarea id="f_notes">${esc(u.notes||'')}</textarea>`)}
+      <button class="btn" id="saveBtn">حفظ الوحدة</button>
+    </div>`);
+    Modal.open(id?'تعديل وحدة':'وحدة جديدة', body);
+    body.querySelector('#saveBtn').onclick = ()=>{
+      const propertyId = body.querySelector('#f_property').value;
+      const unitNumber = body.querySelector('#f_number').value.trim();
+      const price = body.querySelector('#f_price').value;
+      if(!propertyId || !unitNumber || !price){ toast('العقار، رقم الوحدة، والسعر مطلوبة'); return; }
+      const obj = {
+        id: id||uid(), propertyId, unitNumber, floorNumber: body.querySelector('#f_floor').value.trim(),
+        rooms: body.querySelector('#f_rooms').value, bathrooms: body.querySelector('#f_bath').value,
+        area: body.querySelector('#f_area').value, price, status: body.querySelector('#f_status').value,
+        notes: body.querySelector('#f_notes').value.trim()
+      };
+      if(id){ Object.assign(findById(DB.units,id), obj); audit('update','unit',id); }
+      else { DB.units.push(obj); audit('create','unit',obj.id); }
+      saveDB(); Modal.close(); toast('تم حفظ الوحدة'); App.nav('propertyDetail',{id:propertyId});
+    };
+  },
+
+  tenant(id){
+    const t = id ? findById(DB.tenants,id) : {fullName:'', nationalId:'', passport:'', nationality:'', phone:'', whatsapp:'', email:'', address:'', employer:'', jobTitle:'', emergency:'', notes:''};
+    const body = el(`<div>
+      ${Forms._field('الاسم الكامل', `<input id="f_name" value="${esc(t.fullName)}">`, true)}
+      <div class="field-row">
+        ${Forms._field('الهاتف', `<input id="f_phone" value="${esc(t.phone)}">`, true)}
+        ${Forms._field('واتساب', `<input id="f_wa" value="${esc(t.whatsapp||'')}">`)}
+      </div>
+      ${Forms._field('البريد الإلكتروني', `<input id="f_email" value="${esc(t.email||'')}">`)}
+      <div class="field-row">
+        ${Forms._field('الرقم الوطني', `<input id="f_nid" value="${esc(t.nationalId||'')}">`)}
+        ${Forms._field('رقم الجواز', `<input id="f_pass" value="${esc(t.passport||'')}">`)}
+      </div>
+      ${Forms._field('الجنسية', `<input id="f_nat" value="${esc(t.nationality||'')}">`)}
+      ${Forms._field('العنوان', `<textarea id="f_addr">${esc(t.address||'')}</textarea>`)}
+      <div class="field-row">
+        ${Forms._field('جهة العمل', `<input id="f_employer" value="${esc(t.employer||'')}">`)}
+        ${Forms._field('المسمى الوظيفي', `<input id="f_job" value="${esc(t.jobTitle||'')}">`)}
+      </div>
+      ${Forms._field('رقم للطوارئ', `<input id="f_em" value="${esc(t.emergency||'')}">`)}
+      ${Forms._field('ملاحظات', `<textarea id="f_notes">${esc(t.notes||'')}</textarea>`)}
+      <button class="btn" id="saveBtn">حفظ المستأجر</button>
+    </div>`);
+    Modal.open(id?'تعديل مستأجر':'مستأجر جديد', body);
+    body.querySelector('#saveBtn').onclick = ()=>{
+      const fullName = body.querySelector('#f_name').value.trim();
+      const phone = body.querySelector('#f_phone').value.trim();
+      if(!fullName || !phone){ toast('الاسم والهاتف مطلوبان'); return; }
+      const obj = {
+        id:id||uid(), fullName, phone, whatsapp: body.querySelector('#f_wa').value.trim(),
+        email: body.querySelector('#f_email').value.trim(), nationalId: body.querySelector('#f_nid').value.trim(),
+        passport: body.querySelector('#f_pass').value.trim(), nationality: body.querySelector('#f_nat').value.trim(),
+        address: body.querySelector('#f_addr').value.trim(), employer: body.querySelector('#f_employer').value.trim(),
+        jobTitle: body.querySelector('#f_job').value.trim(), emergency: body.querySelector('#f_em').value.trim(),
+        notes: body.querySelector('#f_notes').value.trim()
+      };
+      if(id){ Object.assign(findById(DB.tenants,id), obj); audit('update','tenant',id); }
+      else { DB.tenants.push(obj); audit('create','tenant',obj.id); }
+      saveDB(); Modal.close(); toast('تم حفظ المستأجر'); App.nav(id?'tenantDetail':'tenants', id?{id}:null);
+    };
+  },
+
+  contract(id){
+    const c = id ? findById(DB.contracts,id) : {
+      number:'CT-'+genCode(6), unitId:'', tenantId:'', startDate:todayISO(), endDate:'', rent:'', deposit:0,
+      paymentMethod:'cash', installments:12, status:'active', notes:''
+    };
+    const availableUnits = DB.units.filter(u=> u.status==='available' || (id && u.id===c.unitId));
+    const body = el(`<div>
+      ${Forms._field('رقم العقد', `<input id="f_num" value="${esc(c.number)}" readonly style="opacity:.7">`)}
+      ${Forms._field('الوحدة', Forms._select('f_unit', availableUnits.map(u=>[u.id, propertyName(u.propertyId)+' — وحدة '+u.unitNumber]), c.unitId, 'اختر الوحدة'), true)}
+      ${Forms._field('المستأجر', Forms._select('f_tenant', DB.tenants.map(t=>[t.id,t.fullName]), c.tenantId, 'اختر المستأجر'), true)}
+      <div class="field-row">
+        ${Forms._field('تاريخ البداية', `<input id="f_start" type="date" value="${esc(c.startDate)}">`, true)}
+        ${Forms._field('تاريخ النهاية', `<input id="f_end" type="date" value="${esc(c.endDate)}">`, true)}
+      </div>
+      <div class="field-row">
+        ${Forms._field('قيمة الإيجار / دفعة', `<input id="f_rent" type="number" value="${esc(c.rent)}">`, true)}
+        ${Forms._field('التأمين', `<input id="f_deposit" type="number" value="${esc(c.deposit)}">`)}
+      </div>
+      <div class="field-row">
+        ${Forms._field('طريقة السداد', Forms._select('f_method', Object.entries(PAYMENT_METHODS), c.paymentMethod))}
+        ${Forms._field('عدد الدفعات', `<input id="f_inst" type="number" value="${esc(c.installments)}">`)}
+      </div>
+      ${Forms._field('حالة العقد', Forms._select('f_status', Object.entries(CONTRACT_STATUS).map(([k,v])=>[k,v.l]), c.status))}
+      ${Forms._field('ملاحظات', `<textarea id="f_notes">${esc(c.notes||'')}</textarea>`)}
+      ${id?'':'<div class="notice">عند الحفظ، سيتم إنشاء جدول الدفعات تلقائياً حسب عدد الدفعات المحدد، وتغيير حالة الوحدة إلى "مؤجرة".</div>'}
+      <button class="btn" id="saveBtn">حفظ العقد</button>
+    </div>`);
+    Modal.open(id?'تعديل عقد':'عقد جديد', body);
+    body.querySelector('#saveBtn').onclick = ()=>{
+      const unitId = body.querySelector('#f_unit').value;
+      const tenantId = body.querySelector('#f_tenant').value;
+      const startDate = body.querySelector('#f_start').value;
+      const endDate = body.querySelector('#f_end').value;
+      const rent = body.querySelector('#f_rent').value;
+      if(!unitId||!tenantId||!startDate||!endDate||!rent){ toast('جميع الحقول الأساسية مطلوبة'); return; }
+      if(endDate <= startDate){ toast('تاريخ النهاية يجب أن يكون بعد البداية'); return; }
+      const obj = {
+        id:id||uid(), number: body.querySelector('#f_num').value, unitId, tenantId, startDate, endDate,
+        rent, deposit: body.querySelector('#f_deposit').value||0, paymentMethod: body.querySelector('#f_method').value,
+        installments: Number(body.querySelector('#f_inst').value||1), status: body.querySelector('#f_status').value,
+        notes: body.querySelector('#f_notes').value.trim(),
+        verificationCode: id ? c.verificationCode : genCode(8),
+        createdAt: id ? c.createdAt : new Date().toISOString()
+      };
+      const isNew = !id;
+      if(id){ Object.assign(findById(DB.contracts,id), obj); audit('update','contract',id); }
+      else {
+        DB.contracts.push(obj); audit('create','contract',obj.id);
+        // توليد جدول الدفعات تلقائياً
+        const n = Math.max(1, obj.installments);
+        const start = new Date(obj.startDate);
+        for(let i=0;i<n;i++){
+          const due = new Date(start); due.setMonth(due.getMonth()+i);
+          DB.payments.push({
+            id:uid(), contractId:obj.id, amountDue:Number(obj.rent), amountPaid:0,
+            dueDate: due.toISOString().slice(0,10), paidDate:null, method:obj.paymentMethod,
+            status:'due', receiptNumber:'RC-'+genCode(6), notes:''
+          });
+        }
+        // تحديث حالة الوحدة
+        const unit = findById(DB.units, unitId);
+        if(unit && obj.status==='active'){ unit.status = 'rented'; }
+      }
+      saveDB(); Modal.close(); toast('تم حفظ العقد'); App.nav('contractDetail',{id:obj.id});
+    };
+  },
+
+  payment(id){
+    const p = id ? findById(DB.payments,id) : {contractId:'', amountDue:'', amountPaid:0, dueDate:todayISO(), paidDate:'', method:'cash', status:'due', notes:''};
+    const body = el(`<div>
+      ${Forms._field('العقد', Forms._select('f_contract', DB.contracts.map(c=>[c.id, c.number+' — '+tenantName(c.tenantId)]), p.contractId, 'اختر العقد'), true)}
+      <div class="field-row">
+        ${Forms._field('المبلغ المستحق', `<input id="f_due" type="number" value="${esc(p.amountDue)}">`, true)}
+        ${Forms._field('المبلغ المدفوع', `<input id="f_paid" type="number" value="${esc(p.amountPaid)}">`)}
+      </div>
+      <div class="field-row">
+        ${Forms._field('تاريخ الاستحقاق', `<input id="f_duedate" type="date" value="${esc(p.dueDate)}">`, true)}
+        ${Forms._field('تاريخ الدفع', `<input id="f_paiddate" type="date" value="${esc(p.paidDate||'')}">`)}
+      </div>
+      ${Forms._field('طريقة الدفع', Forms._select('f_method', Object.entries(PAYMENT_METHODS), p.method))}
+      ${Forms._field('ملاحظات', `<textarea id="f_notes">${esc(p.notes||'')}</textarea>`)}
+      <div class="btn-row">
+        <button class="btn" id="saveBtn">حفظ الدفعة</button>
+      </div>
+      ${id?'<button class="btn secondary" id="receiptBtn" style="margin-top:8px;">🧾 طباعة إيصال</button>':''}
+    </div>`);
+    Modal.open(id?'تعديل دفعة':'دفعة جديدة', body);
+    if(id && body.querySelector('#receiptBtn')) body.querySelector('#receiptBtn').onclick = ()=>Documents.printReceipt(id);
+    body.querySelector('#saveBtn').onclick = ()=>{
+      const contractId = body.querySelector('#f_contract').value;
+      const amountDue = body.querySelector('#f_due').value;
+      if(!contractId || !amountDue){ toast('العقد والمبلغ المستحق مطلوبان'); return; }
+      const paidDate = body.querySelector('#f_paiddate').value;
+      const obj = {
+        id:id||uid(), contractId, amountDue, amountPaid: body.querySelector('#f_paid').value||0,
+        dueDate: body.querySelector('#f_duedate').value, paidDate: paidDate||null,
+        method: body.querySelector('#f_method').value, notes: body.querySelector('#f_notes').value.trim(),
+        receiptNumber: id ? p.receiptNumber : 'RC-'+genCode(6)
+      };
+      if(id){ Object.assign(findById(DB.payments,id), obj); audit('update','payment',id); }
+      else { DB.payments.push(obj); audit('create','payment',obj.id); }
+      saveDB(); Modal.close(); toast('تم حفظ الدفعة'); App.nav('payments');
+    };
+  },
+
+  maintenance(id){
+    const m = id ? findById(DB.maintenance,id) : {unitId:'', title:'', description:'', priority:'medium', status:'open', cost:0, assignedTo:''};
+    const body = el(`<div>
+      ${Forms._field('الوحدة', Forms._select('f_unit', DB.units.map(u=>[u.id, propertyName(u.propertyId)+' — وحدة '+u.unitNumber]), m.unitId, 'اختر الوحدة'), true)}
+      ${Forms._field('عنوان البلاغ', `<input id="f_title" value="${esc(m.title)}">`, true)}
+      ${Forms._field('الوصف', `<textarea id="f_desc">${esc(m.description||'')}</textarea>`)}
+      <div class="field-row">
+        ${Forms._field('الأولوية', Forms._select('f_priority', Object.entries(MAINT_PRIORITY).map(([k,v])=>[k,v.l]), m.priority))}
+        ${Forms._field('الحالة', Forms._select('f_status', Object.entries(MAINT_STATUS).map(([k,v])=>[k,v.l]), m.status))}
+      </div>
+      <div class="field-row">
+        ${Forms._field('التكلفة', `<input id="f_cost" type="number" value="${esc(m.cost||0)}">`)}
+        ${Forms._field('الفني المسؤول', `<input id="f_assigned" value="${esc(m.assignedTo||'')}">`)}
+      </div>
+      <button class="btn" id="saveBtn">حفظ البلاغ</button>
+    </div>`);
+    Modal.open(id?'تعديل بلاغ صيانة':'بلاغ صيانة جديد', body);
+    body.querySelector('#saveBtn').onclick = ()=>{
+      const unitId = body.querySelector('#f_unit').value;
+      const title = body.querySelector('#f_title').value.trim();
+      if(!unitId||!title){ toast('الوحدة وعنوان البلاغ مطلوبان'); return; }
+      const status = body.querySelector('#f_status').value;
+      const obj = {
+        id:id||uid(), unitId, title, description: body.querySelector('#f_desc').value.trim(),
+        priority: body.querySelector('#f_priority').value, status,
+        cost: body.querySelector('#f_cost').value||0, assignedTo: body.querySelector('#f_assigned').value.trim(),
+        createdAt: id ? m.createdAt : new Date().toISOString(),
+        closedAt: status==='closed' ? new Date().toISOString() : null
+      };
+      if(id){ Object.assign(findById(DB.maintenance,id), obj); audit('update','maintenance',id); }
+      else { DB.maintenance.push(obj); audit('create','maintenance',obj.id); }
+      saveDB(); Modal.close(); toast('تم حفظ البلاغ'); App.nav('maintenance');
+    };
+  },
+
+  finance(key, id, defaults){
+    const isExpense = key==='expenses' || !id && key===undefined ? true : key==='expenses';
+    const actualKey = key; // 'expenses' or 'revenues'
+    const item = id ? findById(DB[actualKey], id) : {propertyId:'', category:'', amount:'', date:todayISO(), description:''};
+    const cats = actualKey==='expenses' ? EXPENSE_CATS : REVENUE_CATS;
+    const body = el(`<div>
+      ${Forms._field('العقار (اختياري)', Forms._select('f_property', DB.properties.map(p=>[p.id,p.name]), item.propertyId, 'بدون تحديد'))}
+      ${Forms._field('الفئة', Forms._select('f_cat', cats.map(c=>[c,c]), item.category, 'اختر الفئة'), true)}
+      <div class="field-row">
+        ${Forms._field('المبلغ', `<input id="f_amount" type="number" value="${esc(item.amount)}">`, true)}
+        ${Forms._field('التاريخ', `<input id="f_date" type="date" value="${esc(item.date)}">`, true)}
+      </div>
+      ${Forms._field('الوصف', `<textarea id="f_desc">${esc(item.description||'')}</textarea>`)}
+      <button class="btn" id="saveBtn">حفظ</button>
+    </div>`);
+    Modal.open(id?'تعديل سجل':(actualKey==='expenses'?'مصروف جديد':'إيراد جديد'), body);
+    body.querySelector('#saveBtn').onclick = ()=>{
+      const category = body.querySelector('#f_cat').value;
+      const amount = body.querySelector('#f_amount').value;
+      const date = body.querySelector('#f_date').value;
+      if(!category||!amount||!date){ toast('الفئة والمبلغ والتاريخ مطلوبة'); return; }
+      const obj = { id:id||uid(), propertyId: body.querySelector('#f_property').value||null, category, amount, date, description: body.querySelector('#f_desc').value.trim() };
+      if(id){ Object.assign(findById(DB[actualKey],id), obj); audit('update',actualKey.slice(0,-1),id); }
+      else { DB[actualKey].push(obj); audit('create',actualKey.slice(0,-1),obj.id); }
+      saveDB(); Modal.close(); toast('تم الحفظ'); App.nav('finance');
+    };
+  }
+};
+// ربط اختصارات finance للمصروفات/الإيرادات من App.fabAction ومن القوائم
+Forms.open = (function(orig){
+  return function(type, id, defaults){
+    if(type==='expense') return Forms.finance('expenses', id, defaults);
+    if(type==='revenue') return Forms.finance('revenues', id, defaults);
+    return orig(type, id, defaults);
+  };
+})(Forms.open);
+
+/* ============================= الإجراءات (Actions) ============================= */
+const Actions = {
+  deleteHard(collection, id){
+    if(!confirm('هل تريد حذف هذا العنصر نهائياً؟')) return;
+    DB[collection] = DB[collection].filter(x=>x.id!==id);
+    audit('delete', collection, id);
+    saveDB(); toast('تم الحذف'); App.nav(collection);
+  },
+  softDelete(collection, id){
+    if(!confirm('سيتم أرشفة هذا السجل (لن يُحذف نهائياً، سيبقى محفوظاً في قاعدة البيانات المحلية).')) return;
+    const item = findById(DB[collection], id);
+    if(item) item._deleted = true;
+    audit('archive', collection, id);
+    saveDB(); toast('تمت الأرشفة'); App.nav(collection);
+  },
+  setTheme(mode){
+    DB.settings.theme = mode; saveDB();
+    document.body.setAttribute('data-theme', mode);
+    toast('تم تغيير المظهر');
+  },
+  saveSettings(){
+    DB.settings.orgName = document.getElementById('setOrgName').value.trim() || DB.settings.orgName;
+    DB.settings.currentRole = document.getElementById('setRole').value;
+    saveDB(); App.updateBrand(); toast('تم حفظ الإعدادات');
+  },
+  exportBackup(){
+    const blob = new Blob([JSON.stringify(DB, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'aqari-pro-backup-'+todayISO()+'.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    toast('تم تصدير النسخة الاحتياطية');
+  },
+  importBackup(){
+    const fileInput = document.getElementById('restoreFile');
+    const file = fileInput.files[0];
+    if(!file){ toast('اختر ملف النسخة الاحتياطية أولاً'); return; }
+    if(!confirm('سيتم استبدال جميع البيانات الحالية ببيانات الملف المستورد. هل أنت متأكد؟')) return;
+    const reader = new FileReader();
+    reader.onload = e=>{
+      try{
+        const parsed = JSON.parse(e.target.result);
+        DB = Object.assign(seedDB(), parsed);
+        saveDB(); toast('تم استعادة النسخة الاحتياطية'); App.nav('dashboard');
+      }catch(err){ toast('ملف غير صالح'); }
+    };
+    reader.readAsText(file);
+  },
+  shareWhatsapp(type, id){
+    let text = '';
+    if(type==='contract'){
+      const c = findById(DB.contracts,id);
+      text = `عقد إيجار رقم ${c.number}\nالمستأجر: ${tenantName(c.tenantId)}\nالوحدة: ${unitLabel(c.unitId)}\nمن ${fmtDate(c.startDate)} إلى ${fmtDate(c.endDate)}\nقيمة الإيجار: ${fmtMoney(c.rent)}\nرمز التحقق: ${c.verificationCode}`;
+    }
+    const url = 'https://wa.me/?text=' + encodeURIComponent(text);
+    window.open(url, '_blank');
+  }
+};
+
+/* ============================= المستندات والطباعة (Documents) ============================= */
+const Documents = {
+  printContract(id){
+    const c = findById(DB.contracts, id);
+    const u = findById(DB.units, c.unitId);
+    const p = findById(DB.properties, u.propertyId);
+    const t = findById(DB.tenants, c.tenantId);
+    const area = document.getElementById('print-area');
+    area.innerHTML = `
+      <div style="text-align:center;margin-bottom:18px;">
+        <div style="font-size:20px;font-weight:700;">عقد إيجار</div>
+        <div style="font-size:13px;color:#555;">${esc(DB.settings.orgName)}</div>
+        <div style="font-size:12px;color:#777;font-family:monospace;">رقم العقد: ${esc(c.number)}</div>
+      </div>
+      <div style="font-size:13px;line-height:2;">
+        <p><b>الطرف الأول (المؤجر):</b> ${esc(DB.settings.orgName)}</p>
+        <p><b>الطرف الثاني (المستأجر):</b> ${esc(t.fullName)} — هاتف: ${esc(t.phone||'')} — الرقم الوطني: ${esc(t.nationalId||'—')}</p>
+        <p><b>العقار / الوحدة:</b> ${esc(p.name)}، ${esc(PROPERTY_TYPES[p.type])}، وحدة رقم ${esc(u.unitNumber)}، ${esc(p.city)}</p>
+        <p><b>مدة العقد:</b> من ${fmtDate(c.startDate)} إلى ${fmtDate(c.endDate)}</p>
+        <p><b>قيمة الإيجار:</b> ${fmtMoney(c.rent)} — <b>التأمين:</b> ${fmtMoney(c.deposit)} — <b>طريقة السداد:</b> ${esc(PAYMENT_METHODS[c.paymentMethod])}</p>
+      </div>
+      <div style="margin-top:16px;">
+        <div style="font-weight:700;font-size:14px;margin-bottom:8px;">بنود العقد</div>
+        ${CONTRACT_CLAUSES.map((cl,i)=>`<div class="pclause">${i+1}. ${esc(cl)}</div>`).join('')}
+      </div>
+      <div style="margin-top:16px;padding:10px;border:1px solid #000;font-size:11.5px;">
+        ⚠ تنبيه: هذا العقد نموذج عملي مساعد ولا يُغني عن المراجعة القانونية المحلية أو التوثيق الرسمي إذا اشترطه القانون السوداني قبل الاعتماد النهائي.
+      </div>
+      <div class="qr-box" id="qrHolder"></div>
+      <div style="text-align:center;font-family:monospace;font-size:11px;margin-top:-6px;">رمز التحقق: ${esc(c.verificationCode)}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:30px;">
+        <div class="psig">توقيع المؤجر</div>
+        <div class="psig">توقيع المستأجر</div>
+        <div class="psig">توقيع الشاهد الأول</div>
+        <div class="psig">توقيع الشاهد الثاني</div>
+      </div>
+    `;
+    if(window.QRCode){
+      try{ new QRCode(area.querySelector('#qrHolder'), {text:'AQARI-VERIFY:'+c.number+':'+c.verificationCode, width:110, height:110}); }catch(e){}
+    }
+    window.print();
+  },
+
+  printReceipt(id){
+    const p = findById(DB.payments, id);
+    const c = findById(DB.contracts, p.contractId);
+    const t = findById(DB.tenants, c.tenantId);
+    const area = document.getElementById('print-area');
+    area.innerHTML = `
+      <div style="text-align:center;margin-bottom:18px;">
+        <div style="font-size:19px;font-weight:700;">إيصال دفع</div>
+        <div style="font-size:13px;color:#555;">${esc(DB.settings.orgName)}</div>
+        <div style="font-size:12px;font-family:monospace;">${esc(p.receiptNumber)}</div>
+      </div>
+      <div style="font-size:13.5px;line-height:2.1;">
+        <p><b>المستأجر:</b> ${esc(t.fullName)}</p>
+        <p><b>العقد:</b> ${esc(c.number)} — <b>الوحدة:</b> ${esc(unitLabel(c.unitId))}</p>
+        <p><b>المبلغ المستحق:</b> ${fmtMoney(p.amountDue)}</p>
+        <p><b>المبلغ المدفوع:</b> ${fmtMoney(p.amountPaid)}</p>
+        <p><b>تاريخ الاستحقاق:</b> ${fmtDate(p.dueDate)} — <b>تاريخ الدفع:</b> ${fmtDate(p.paidDate)}</p>
+        <p><b>طريقة الدفع:</b> ${esc(PAYMENT_METHODS[p.method]||'—')}</p>
+      </div>
+      <div class="psig" style="margin-top:60px;">توقيع المستلم</div>
+    `;
+    window.print();
+  },
+
+  printReport(){
+    const revenue = DB.revenues.reduce((s,r)=>s+Number(r.amount||0),0) + DB.payments.reduce((s,p)=>s+Number(p.amountPaid||0),0);
+    const expense = DB.expenses.reduce((s,r)=>s+Number(r.amount||0),0);
+    const area = document.getElementById('print-area');
+    area.innerHTML = `
+      <div style="text-align:center;margin-bottom:18px;"><div style="font-size:19px;font-weight:700;">تقرير مالي وتشغيلي</div><div style="font-size:12px;color:#555;">${esc(DB.settings.orgName)} — ${fmtDate(todayISO())}</div></div>
+      <div style="font-size:13.5px;line-height:2.2;">
+        <p>إجمالي الإيرادات: ${fmtMoney(revenue)}</p>
+        <p>إجمالي المصروفات: ${fmtMoney(expense)}</p>
+        <p>صافي الربح: ${fmtMoney(revenue-expense)}</p>
+        <p>عدد العقارات: ${DB.properties.length} — عدد الوحدات: ${DB.units.length}</p>
+        <p>عدد العقود السارية: ${DB.contracts.filter(c=>['active','expiring_soon'].includes(computeContractStatus(c))).length}</p>
+        <p>دفعات متأخرة: ${DB.payments.filter(p=>computePaymentStatus(p)==='late').length}</p>
+      </div>`;
+    window.print();
+  },
+
+  exportCSV(){
+    let rows = [['النوع','الفئة','المبلغ','التاريخ','العقار']];
+    DB.expenses.forEach(e=>rows.push(['مصروف', e.category, e.amount, e.date, propertyName(e.propertyId)]));
+    DB.revenues.forEach(r=>rows.push(['إيراد', r.category, r.amount, r.date, propertyName(r.propertyId)]));
+    const csv = rows.map(r=>r.map(c=>'"'+String(c==null?'':c).replace(/"/g,'""')+'"').join(',')).join('\n');
+    const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download='taqrir-mali-'+todayISO()+'.csv';
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  }
+};
+
+/* ============================= بدء التشغيل ============================= */
+App.init();
+</script>
+</body>
+</html>
