@@ -223,6 +223,32 @@ main{max-width:640px; margin:0 auto; padding:18px;}
   padding:8px 14px; border-radius:999px; font-size:12.5px; white-space:nowrap; cursor:pointer;
 }
 .tabbar button.active{background:var(--accent-grad); color:#fff; border-color:transparent; font-weight:700;}
+
+/* ---------- Receipt tool (rc-*) — ألوان ثابتة بيضاء/سوداء بغض النظر عن وضع التطبيق ---------- */
+.rc-preview-wrap{background:#dfe2ec; border-radius:14px; padding:14px; overflow-x:auto; margin-bottom:14px;}
+.rc-sheet{background:#fff; color:#111; font-family:var(--arabic); width:100%; max-width:480px; margin:0 auto; padding:20px 16px; box-shadow:0 10px 30px rgba(0,0,0,.25); border-radius:2px;}
+.rc-header{text-align:center; border-bottom:3px double #16213e; padding-bottom:10px; margin-bottom:14px;}
+.rc-title{font-size:19px; font-weight:800; color:#16213e;}
+.rc-sub{font-size:12.5px; color:#555; margin-top:4px;}
+.rc-meta-row{display:flex; justify-content:space-between; font-size:11.5px; margin-bottom:10px; font-family:var(--mono);}
+.rc-table{width:100%; border-collapse:collapse; margin-bottom:12px; font-size:11.5px;}
+.rc-table td{border:1px solid #aaa; padding:6px 8px; vertical-align:top; color:#111;}
+.rc-table td.k{background:#f3f4f7; font-weight:700; width:26%; color:#16213e;}
+.rc-amount-box{border:2px solid #16213e; border-radius:6px; padding:10px 14px; text-align:center; margin-bottom:12px; background:#f8f9fc;}
+.rc-amount-num{font-size:17px; font-weight:800; color:#16213e; font-family:var(--mono);}
+.rc-amount-words{font-size:11.5px; margin-top:5px; color:#333;}
+.rc-section-title{font-weight:700; font-size:12px; margin:12px 0 7px; color:#16213e;}
+.rc-note-italic{font-size:10.5px; color:#a8283c; font-style:italic; margin-top:4px;}
+.rc-notes{font-size:11px; margin:10px 0; border-top:1px dashed #ccc; padding-top:7px; color:#111;}
+.rc-sign-row{display:flex; justify-content:space-between; gap:16px; margin-top:34px;}
+.rc-sign-box{flex:1; text-align:center; position:relative; min-height:80px;}
+.rc-sign-line{border-top:1px solid #333; margin-top:56px; padding-top:5px; font-size:11px; color:#111;}
+.rc-legal{margin-top:22px; font-size:10px; color:#444; text-align:center; border-top:1px solid #ccc; padding-top:9px; line-height:1.7;}
+.rc-stamp{position:absolute; top:-6px; left:6px; width:104px; height:104px; border-radius:50%; border:3px double #a8283c; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#a8283c; opacity:.85; transform:rotate(-9deg); text-align:center; padding:6px; mix-blend-mode:multiply;}
+.rc-stamp::before{content:''; position:absolute; inset:6px; border:1px solid currentColor; border-radius:50%; opacity:.55;}
+.rc-stamp .star{font-size:14px; line-height:1;}
+.rc-stamp .name{font-size:8px; font-weight:800; line-height:1.25; margin-top:2px;}
+.rc-stamp .sub{font-size:6.5px; letter-spacing:.04em; margin-top:2px;}
 </style>
 </head>
 <body data-theme="dark">
@@ -276,7 +302,7 @@ function uid(){ return (crypto.randomUUID ? crypto.randomUUID() : 'id-'+Date.now
 
 function seedDB(){
   return {
-    settings:{ orgName:'مكتبي العقاري', theme:'dark', currentRole:'owner', currency:'SDG', ownerNationalId:'', ownerAddress:'', pin:'', usdRate:'', starterSeeded:false },
+    settings:{ orgName:'مكتبي العقاري', theme:'dark', currentRole:'owner', currency:'SDG', ownerNationalId:'', ownerAddress:'', pin:'', usdRate:'', starterSeeded:false, receiptSeq:0 },
     properties:[], units:[], tenants:[], contracts:[], payments:[],
     maintenance:[], expenses:[], revenues:[], auditLog:[]
   };
@@ -343,6 +369,53 @@ const PAYMENT_METHODS = {cash:'نقدي', bank_transfer:'تحويل بنكي', m
 const MAINT_PRIORITY = {low:{l:'منخفضة',c:'b-gray'}, medium:{l:'متوسطة',c:'b-teal'}, high:{l:'عالية',c:'b-yellow'}, urgent:{l:'عاجلة',c:'b-red'}};
 const MAINT_STATUS = {open:{l:'مفتوح',c:'b-red'}, assigned:{l:'مسند',c:'b-yellow'}, in_progress:{l:'قيد التنفيذ',c:'b-teal'}, closed:{l:'مغلق',c:'b-green'}, cancelled:{l:'ملغي',c:'b-gray'}};
 const EXPENSE_CATS = ['كهرباء','مياه','غاز','حراسة','نظافة','ضرائب','صيانة','رواتب','وقود','أخرى'];
+
+/* ---------------------- أدوات إيصال الاستلام (تحويل الأرقام لكلمات عربية) ---------------------- */
+const RECEIPT_CURRENCIES = { SDG:'جنيه سوداني', USD:'دولار أمريكي', EGP:'جنيه مصري', SAR:'ريال سعودي', AED:'درهم إماراتي' };
+const AR_ONES = ['', 'واحد', 'اثنان', 'ثلاثة', 'أربعة', 'خمسة', 'ستة', 'سبعة', 'ثمانية', 'تسعة'];
+const AR_TEENS = ['عشرة','أحد عشر','اثنا عشر','ثلاثة عشر','أربعة عشر','خمسة عشر','ستة عشر','سبعة عشر','ثمانية عشر','تسعة عشر'];
+const AR_TENS = ['', '', 'عشرون','ثلاثون','أربعون','خمسون','ستون','سبعون','ثمانون','تسعون'];
+const AR_HUNDREDS = ['', 'مائة','مئتان','ثلاثمائة','أربعمائة','خمسمائة','ستمائة','سبعمائة','ثمانمائة','تسعمائة'];
+
+function threeDigitsToWords(n){
+  n = n % 1000;
+  const h = Math.floor(n/100), r = n % 100;
+  const parts = [];
+  if(h > 0) parts.push(AR_HUNDREDS[h]);
+  if(r > 0){
+    if(r < 10) parts.push(AR_ONES[r]);
+    else if(r < 20) parts.push(AR_TEENS[r-10]);
+    else {
+      const t = Math.floor(r/10), o = r % 10;
+      parts.push(o > 0 ? (AR_ONES[o] + ' و' + AR_TENS[t]) : AR_TENS[t]);
+    }
+  }
+  return parts.join(' و');
+}
+
+function numberToArabicWords(num){
+  num = Math.floor(Number(num) || 0);
+  if(num === 0) return 'صفر';
+  const scales = [
+    {value:1000000000, singular:'مليار', dual:'ملياران', plural:'مليارات'},
+    {value:1000000, singular:'مليون', dual:'مليونان', plural:'ملايين'},
+    {value:1000, singular:'ألف', dual:'ألفان', plural:'آلاف'}
+  ];
+  let remaining = num;
+  const result = [];
+  scales.forEach(scale=>{
+    const count = Math.floor(remaining / scale.value);
+    if(count > 0){
+      remaining = remaining % scale.value;
+      if(count === 1) result.push(scale.singular);
+      else if(count === 2) result.push(scale.dual);
+      else if(count >= 3 && count <= 10) result.push(threeDigitsToWords(count) + ' ' + scale.plural);
+      else result.push(threeDigitsToWords(count) + ' ' + scale.singular);
+    }
+  });
+  if(remaining > 0) result.push(threeDigitsToWords(remaining));
+  return result.join(' و');
+}
 const FURNITURE_CATALOG = {
   'غرفة النوم': ['سرير','مرتبة','دولاب ملابس','تسريحة (تواليت)','طاولة جانبية','خزانة أحذية'],
   'الصالة والمعيشة': ['أريكة (كنبة)','طاولة وسط','طاولة تلفزيون','كراسي صالة','رفوف/مكتبة','سجاد/موكيت','ستائر'],
@@ -513,7 +586,8 @@ const App = {
       tenants: Screens.tenants, tenantDetail: Screens.tenantDetail,
       contracts: Screens.contracts, contractDetail: Screens.contractDetail,
       payments: Screens.payments, maintenance: Screens.maintenance,
-      finance: Screens.finance, reports: Screens.reports, settings: Screens.settings, more: Screens.more
+      finance: Screens.finance, reports: Screens.reports, settings: Screens.settings, more: Screens.more,
+      receipt: Screens.receipt
     };
     const fn = map[this.route] || Screens.dashboard;
     app.appendChild(fn(this.params));
@@ -948,7 +1022,107 @@ const Screens = {
     return wrap;
   },
 
+  receipt(){
+    App.setTitle('إيصال استلام مبلغ', '');
+    const s = DB.settings;
+    const wrap = el(`<div>
+      <div class="card">
+        <div class="section-title" style="margin-top:0;">تعبئة سريعة من عقد موجود (اختياري)</div>
+        <div class="field">
+          ${Forms._select('rc_contract', DB.contracts.filter(c=>!c._deleted).map(c=>[c.id, c.number+' — '+tenantName(c.tenantId)]), '', 'بدون — تعبئة يدوية')}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title" style="margin-top:0;">بيانات المالك والمستلم</div>
+        ${Forms._field('اسم المالك (يظهر في الترويسة)', `<input id="rc_owner" value="${esc(s.orgName||'')}">`)}
+        ${Forms._field('اسم المستلم (الموقّع على الإيصال)', `<input id="rc_receiver" value="${esc(s.orgName||'')}">`)}
+      </div>
+
+      <div class="card">
+        <div class="section-title" style="margin-top:0;">رقم وتاريخ الإيصال</div>
+        <div class="field-row">
+          ${Forms._field('رقم الإيصال', `<input id="rc_no">`)}
+          ${Forms._field('تاريخ الإصدار', `<input id="rc_date" type="date" value="${esc(todayISO())}">`)}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title" style="margin-top:0;">بيانات الدافع</div>
+        ${Forms._field('اسم الدافع', `<input id="rc_payer">`)}
+        <div class="field-row">
+          ${Forms._field('رقم الهوية/الجواز (اختياري)', `<input id="rc_payer_id">`)}
+          ${Forms._field('رقم الهاتف', `<input id="rc_payer_phone">`)}
+        </div>
+        ${Forms._field('عنوان الدافع (اختياري)', `<input id="rc_payer_addr">`)}
+      </div>
+
+      <div class="card">
+        <div class="section-title" style="margin-top:0;">تفاصيل المبلغ</div>
+        <div class="field-row">
+          ${Forms._field('المبلغ بالأرقام', `<input id="rc_amount" type="number" min="0">`)}
+          ${Forms._field('العملة', Forms._select('rc_currency', Object.entries(RECEIPT_CURRENCIES).concat([['other','أخرى (اكتب يدوياً)']]), s.currency||'SDG'))}
+        </div>
+        <div class="field" id="rc_currency_other_wrap" style="display:none;">${Forms._field('اسم العملة', `<input id="rc_currency_other">`)}</div>
+        <div class="field">
+          <label>المبلغ كتابةً <button type="button" class="small-link" id="rc_regen" style="background:none;border:none;color:var(--accent);font-size:11.5px;text-decoration:underline;">إعادة توليد تلقائي</button></label>
+          <textarea id="rc_amount_words" rows="2"></textarea>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title" style="margin-top:0;">سبب الدفع وطريقته</div>
+        ${Forms._field('سبب الدفع', Forms._select('rc_reason', [['إيجار شهر','إيجار شهر'],['دفعة مقدمة','دفعة مقدمة'],['رسوم صيانة','رسوم صيانة'],['تأمين','تأمين'],['خدمات','خدمات'],['غير ذلك','غير ذلك']], 'إيجار شهر'))}
+        <div class="field" id="rc_reason_other_wrap" style="display:none;">${Forms._field('وضّح سبب الدفع', `<input id="rc_reason_other">`)}</div>
+        <div class="field-row">
+          ${Forms._field('الفترة من (إن كان إيجاراً)', `<input id="rc_period_from" type="date">`)}
+          ${Forms._field('إلى', `<input id="rc_period_to" type="date">`)}
+        </div>
+        <div class="field-row">
+          ${Forms._field('طريقة الدفع', Forms._select('rc_method', [['نقداً','نقداً'],['تحويل بنكي','تحويل بنكي'],['بطاقة','بطاقة'],['شيك','شيك'],['محفظة إلكترونية','محفظة إلكترونية']], 'نقداً'))}
+          ${Forms._field('رقم العملية/المرجع (إن وجد)', `<input id="rc_ref">`)}
+        </div>
+      </div>
+
+      <div class="card">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:10px;cursor:pointer;"><input type="checkbox" id="rc_prop_toggle" style="width:auto;"> إضافة بيانات العقار (خاص بالإيجارات)</label>
+        <div id="rc_propFields" style="display:none;">
+          <div class="field-row">
+            ${Forms._field('عنوان العقار', `<input id="rc_prop_addr">`)}
+            ${Forms._field('رقم الوحدة/الشقة', `<input id="rc_unit_no">`)}
+          </div>
+          <div class="field-row">
+            ${Forms._field('اسم المستأجر', `<input id="rc_tenant">`)}
+            ${Forms._field('اسم المؤجر', `<input id="rc_landlord" value="${esc(s.orgName||'')}">`)}
+          </div>
+          <div class="field-row">
+            ${Forms._field('قيمة الإيجار الشهري', `<input id="rc_rent" type="number" min="0">`)}
+            ${Forms._field('المبلغ المتبقي (إن وجد)', `<input id="rc_remaining" type="number" min="0">`)}
+          </div>
+          ${Forms._field('تاريخ استحقاق الإيجار القادم', `<input id="rc_next_due" type="date">`)}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title" style="margin-top:0;">ملاحظات إضافية</div>
+        ${Forms._field('', `<textarea id="rc_notes" placeholder="اختياري..."></textarea>`)}
+      </div>
+
+      <div class="section-title">معاينة الإيصال (كما سيُطبع)</div>
+      <div class="rc-preview-wrap"><div class="rc-sheet" id="rc_preview"></div></div>
+
+      <div class="btn-row">
+        <button class="btn secondary" id="rc_resetBtn">🔄 إيصال جديد</button>
+        <button class="btn" id="rc_printBtn">🖨️ طباعة / PDF</button>
+      </div>
+    </div>`);
+
+    ReceiptTool.bind(wrap);
+    return wrap;
+  },
+
   settings(){
+
     App.setTitle('الإعدادات', '');
     const s = DB.settings;
     const wrap = el('<div></div>');
@@ -1016,7 +1190,7 @@ const Screens = {
     const wrap = el('<div></div>');
     const items = [
       ['💰','الدفعات','payments'], ['🛠️','الصيانة','maintenance'], ['📊','المالية','finance'],
-      ['📈','التقارير','reports'], ['⚙️','الإعدادات','settings']
+      ['📈','التقارير','reports'], ['🧾','إيصال استلام مبلغ','receipt'], ['⚙️','الإعدادات','settings']
     ];
     const card = el('<div class="card"></div>');
     items.forEach(([ic,label,route])=>{
@@ -1749,7 +1923,175 @@ const Actions = {
   }
 };
 
-/* ============================= المستندات والطباعة (Documents) ============================= */
+/* ============================= أداة إيصال الاستلام (ReceiptTool) ============================= */
+const ReceiptTool = {
+  bind(wrap){
+    let wordsAutoMode = true;
+    const q = (sel)=> wrap.querySelector(sel);
+    const rn = 'REC-' + String(Number(DB.settings.receiptSeq||0) + 1).padStart(4,'0');
+    q('#rc_no').value = rn;
+
+    const getData = ()=>{
+      const currency = q('#rc_currency').value === 'other' ? (q('#rc_currency_other').value.trim() || 'عملة') : RECEIPT_CURRENCIES[q('#rc_currency').value];
+      const reason = q('#rc_reason').value === 'غير ذلك' ? (q('#rc_reason_other').value.trim() || 'غير ذلك') : q('#rc_reason').value;
+      return {
+        owner: q('#rc_owner').value.trim() || DB.settings.orgName,
+        receiver: q('#rc_receiver').value.trim() || q('#rc_owner').value.trim(),
+        no: q('#rc_no').value.trim(),
+        date: q('#rc_date').value || todayISO(),
+        payer: q('#rc_payer').value.trim(),
+        payerId: q('#rc_payer_id').value.trim(),
+        payerPhone: q('#rc_payer_phone').value.trim(),
+        payerAddr: q('#rc_payer_addr').value.trim(),
+        amount: Number(q('#rc_amount').value || 0),
+        currency,
+        amountWords: q('#rc_amount_words').value.trim(),
+        reason,
+        periodFrom: q('#rc_period_from').value,
+        periodTo: q('#rc_period_to').value,
+        method: q('#rc_method').value,
+        ref: q('#rc_ref').value.trim(),
+        propOn: q('#rc_prop_toggle').checked,
+        propAddr: q('#rc_prop_addr').value.trim(),
+        unitNo: q('#rc_unit_no').value.trim(),
+        tenant: q('#rc_tenant').value.trim(),
+        landlord: q('#rc_landlord').value.trim(),
+        rent: q('#rc_rent').value,
+        remaining: q('#rc_remaining').value,
+        nextDue: q('#rc_next_due').value,
+        notes: q('#rc_notes').value.trim()
+      };
+    };
+
+    const render = ()=>{
+      if(wordsAutoMode){
+        const amt = Number(q('#rc_amount').value || 0);
+        q('#rc_amount_words').value = numberToArabicWords(amt);
+      }
+      const d = getData();
+      q('#rc_preview').innerHTML = ReceiptTool.buildHtml(d);
+    };
+
+    wrap.querySelectorAll('input, select, textarea').forEach(elm=>{
+      elm.addEventListener('input', ()=>{
+        if(elm === q('#rc_amount_words')) wordsAutoMode = false;
+        render();
+      });
+      elm.addEventListener('change', render);
+    });
+
+    q('#rc_currency').addEventListener('change', ()=>{
+      q('#rc_currency_other_wrap').style.display = q('#rc_currency').value === 'other' ? 'block' : 'none';
+    });
+    q('#rc_reason').addEventListener('change', ()=>{
+      q('#rc_reason_other_wrap').style.display = q('#rc_reason').value === 'غير ذلك' ? 'block' : 'none';
+    });
+    q('#rc_prop_toggle').addEventListener('change', ()=>{
+      q('#rc_propFields').style.display = q('#rc_prop_toggle').checked ? 'block' : 'none';
+    });
+    q('#rc_regen').addEventListener('click', ()=>{ wordsAutoMode = true; render(); });
+
+    q('#rc_contract').addEventListener('change', ()=>{
+      const cid = q('#rc_contract').value;
+      if(!cid){ return; }
+      const c = findById(DB.contracts, cid);
+      const u = findById(DB.units, c.unitId);
+      const p = findById(DB.properties, u.propertyId);
+      const t = findById(DB.tenants, c.tenantId);
+      q('#rc_payer').value = t.fullName || '';
+      q('#rc_payer_id').value = t.nationalId || t.passport || '';
+      q('#rc_payer_phone').value = t.phone || '';
+      q('#rc_payer_addr').value = t.address || '';
+      q('#rc_amount').value = c.rent || '';
+      q('#rc_reason').value = 'إيجار شهر';
+      q('#rc_prop_toggle').checked = true;
+      q('#rc_propFields').style.display = 'block';
+      q('#rc_prop_addr').value = (p.district?p.district+'، ':'') + (p.city||'') + ' — ' + (p.name||'');
+      q('#rc_unit_no').value = u.unitNumber || '';
+      q('#rc_tenant').value = t.fullName || '';
+      q('#rc_landlord').value = DB.settings.orgName || '';
+      q('#rc_rent').value = c.rent || '';
+      wordsAutoMode = true;
+      render();
+    });
+
+    q('#rc_resetBtn').addEventListener('click', ()=>{
+      if(!confirm('سيتم مسح كل الحقول باستثناء اسم المالك. متابعة؟')) return;
+      App.nav('receipt');
+    });
+
+    q('#rc_printBtn').addEventListener('click', ()=>{
+      const d = getData();
+      const html = ReceiptTool.buildHtml(d);
+      const opened = Documents._openPrintWindow('إيصال ' + (d.no||''), '<div class="rc-sheet">'+html+'</div>');
+      if(opened){
+        const suggested = 'REC-' + String(Number(DB.settings.receiptSeq||0) + 1).padStart(4,'0');
+        if(d.no === suggested){
+          DB.settings.receiptSeq = Number(DB.settings.receiptSeq||0) + 1;
+          saveDB();
+        }
+      }
+    });
+
+    render();
+  },
+
+  buildStamp(ownerName){
+    return `<div class="rc-stamp">
+      <div class="star">★</div>
+      <div class="name">${esc(ownerName)}</div>
+      <div class="sub">ختم إلكتروني معتمد</div>
+    </div>`;
+  },
+
+  buildHtml(d){
+    return `
+      <div class="rc-header">
+        <div class="rc-title">إيصال استلام مبلغ</div>
+        <div class="rc-sub">${esc(d.owner)}</div>
+      </div>
+      <div class="rc-meta-row">
+        <div>رقم الإيصال: <b>${esc(d.no || '—')}</b></div>
+        <div>التاريخ: <b>${esc(fmtDate(d.date))}</b></div>
+      </div>
+      <table class="rc-table">
+        <tr><td class="k">اسم الدافع</td><td>${esc(d.payer || '—')}</td><td class="k">رقم الهاتف</td><td>${esc(d.payerPhone || '—')}</td></tr>
+        <tr><td class="k">الهوية/الجواز</td><td>${esc(d.payerId || '—')}</td><td class="k">العنوان</td><td>${esc(d.payerAddr || '—')}</td></tr>
+      </table>
+      <div class="rc-amount-box">
+        <div class="rc-amount-num">${Number(d.amount||0).toLocaleString('en-US')} ${esc(d.currency)}</div>
+        <div class="rc-amount-words">فقط: ${esc(d.amountWords)} ${esc(d.currency)} لا غير</div>
+      </div>
+      <table class="rc-table">
+        <tr><td class="k">سبب الدفع</td><td colspan="3">${esc(d.reason)}</td></tr>
+        ${d.periodFrom ? `<tr><td class="k">الفترة</td><td colspan="3">من ${esc(fmtDate(d.periodFrom))} إلى ${esc(fmtDate(d.periodTo))}</td></tr>` : ''}
+        <tr><td class="k">طريقة الدفع</td><td>${esc(d.method)}</td><td class="k">رقم المرجع</td><td>${esc(d.ref || '—')}</td></tr>
+      </table>
+      ${d.propOn ? `
+        <div class="rc-section-title">بيانات العقار (خاص بالإيجار)</div>
+        <table class="rc-table">
+          <tr><td class="k">عنوان العقار</td><td>${esc(d.propAddr || '—')}</td><td class="k">رقم الوحدة</td><td>${esc(d.unitNo || '—')}</td></tr>
+          <tr><td class="k">المستأجر</td><td>${esc(d.tenant || '—')}</td><td class="k">المؤجر</td><td>${esc(d.landlord || '—')}</td></tr>
+          <tr><td class="k">الإيجار الشهري</td><td>${d.rent ? Number(d.rent).toLocaleString('en-US')+' '+esc(d.currency) : '—'}</td><td class="k">المبلغ المتبقي</td><td>${d.remaining ? Number(d.remaining).toLocaleString('en-US')+' '+esc(d.currency) : '0'}</td></tr>
+          <tr><td class="k">استحقاق الدفعة القادمة</td><td colspan="3">${d.nextDue ? esc(fmtDate(d.nextDue)) : '—'}</td></tr>
+        </table>
+        <div class="rc-note-italic">⚠ لا يُعتبر هذا الإيصال عقد إيجار، وإنما دليل على استلام المبلغ فقط.</div>
+      ` : ''}
+      ${d.notes ? `<div class="rc-notes"><b>ملاحظات:</b> ${esc(d.notes)}</div>` : ''}
+      <div class="rc-sign-row">
+        <div class="rc-sign-box">
+          ${ReceiptTool.buildStamp(d.owner)}
+          <div class="rc-sign-line">توقيع المستلم: ${esc(d.receiver)}</div>
+        </div>
+        <div class="rc-sign-box">
+          <div class="rc-sign-line">توقيع الدافع</div>
+        </div>
+      </div>
+      <div class="rc-legal">يُعد هذا الإيصال إثباتاً باستلام المبلغ المذكور أعلاه، ولا يُستخدم إلا للأغراض التي صُرف من أجلها.</div>
+    `;
+  }
+};
+
 /* ============================= الرسم البياني للتقارير (Reports) ============================= */
 const Reports = {
   drawChart(canvas){
@@ -1827,6 +2169,29 @@ const Documents = {
       'table{width:100%;border-collapse:collapse;margin-top:10px;}'+
       'th,td{border:1px solid #999;padding:7px 8px;font-size:12px;text-align:right;}'+
       'th{background:#f2f2f2;}'+
+      '.rc-sheet{padding:0;}'+
+      '.rc-header{text-align:center;border-bottom:3px double #16213e;padding-bottom:10px;margin-bottom:16px;}'+
+      '.rc-title{font-size:22px;font-weight:800;color:#16213e;}'+
+      '.rc-sub{font-size:13px;color:#555;margin-top:4px;}'+
+      '.rc-meta-row{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:12px;}'+
+      '.rc-table{width:100%;border-collapse:collapse;margin-bottom:14px;font-size:12.5px;}'+
+      '.rc-table td{border:1px solid #999;padding:7px 9px;text-align:right;}'+
+      '.rc-table td.k{background:#f3f4f7;font-weight:700;width:22%;color:#16213e;}'+
+      '.rc-amount-box{border:2px solid #16213e;border-radius:6px;padding:12px 16px;text-align:center;margin-bottom:14px;background:#f8f9fc;}'+
+      '.rc-amount-num{font-size:20px;font-weight:800;color:#16213e;}'+
+      '.rc-amount-words{font-size:12.5px;margin-top:5px;color:#333;}'+
+      '.rc-section-title{font-weight:700;font-size:13px;margin:14px 0 8px;color:#16213e;}'+
+      '.rc-note-italic{font-size:11.5px;color:#a8283c;font-style:italic;margin-top:4px;}'+
+      '.rc-notes{font-size:12px;margin:10px 0;border-top:1px dashed #ccc;padding-top:8px;}'+
+      '.rc-sign-row{display:flex;justify-content:space-between;gap:20px;margin-top:40px;}'+
+      '.rc-sign-box{flex:1;text-align:center;position:relative;min-height:90px;}'+
+      '.rc-sign-line{border-top:1px solid #333;margin-top:60px;padding-top:6px;font-size:12px;}'+
+      '.rc-legal{margin-top:26px;font-size:11px;color:#444;text-align:center;border-top:1px solid #ccc;padding-top:10px;line-height:1.7;}'+
+      '.rc-stamp{position:absolute;top:-8px;left:8px;width:130px;height:130px;border-radius:50%;border:3px double #a8283c;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#a8283c;opacity:.85;transform:rotate(-9deg);text-align:center;padding:6px;mix-blend-mode:multiply;}'+
+      '.rc-stamp::before{content:"";position:absolute;inset:7px;border:1px solid currentColor;border-radius:50%;opacity:.55;}'+
+      '.rc-stamp .star{font-size:16px;line-height:1;}'+
+      '.rc-stamp .name{font-size:9.5px;font-weight:800;line-height:1.25;margin-top:3px;}'+
+      '.rc-stamp .sub{font-size:7.5px;letter-spacing:.04em;margin-top:2px;}'+
       '@media print{ @page{margin:14mm;} }'+
       '</style></head><body>'+innerHtml+
       '<scr'+'ipt>window.onload=function(){ setTimeout(function(){ window.focus(); window.print(); }, 250); };</scr'+'ipt>'+
