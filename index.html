@@ -310,6 +310,7 @@ input,select,textarea{font-family:inherit;}
   <div id="main-root" class="hidden">
     <header class="app-header">
       <div class="brand">
+        <div class="icon-btn hidden" id="back-btn" title="رجوع" style="margin-left:2px;">←</div>
         <div class="brand-mark">ع</div>
         <div class="brand-text">
           <div class="brand-title">عقاري</div>
@@ -349,6 +350,17 @@ const U = {
   fmtDate(iso){ if(!iso) return '—'; const d=new Date(iso); if(isNaN(d)) return iso;
     return d.toLocaleDateString('ar-EG',{year:'numeric',month:'short',day:'numeric'}); },
   daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); },
+  durationText(start,end){
+    const days = U.daysBetween(start,end);
+    if(days<=0) return '—';
+    const months = Math.round(days/30.4);
+    if(months>=1){
+      if(months===12) return 'سنة واحدة';
+      if(months%12===0) return (months/12)+' سنوات';
+      return months + (months===1?' شهر':' أشهر');
+    }
+    return days + ' يوماً';
+  },
   esc(s){ if(s===undefined||s===null) return ''; return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); },
   money(n, currencyOverride){
     n = Number(n)||0;
@@ -390,6 +402,18 @@ const U = {
     el.textContent = msg;
     wrap.appendChild(el);
     setTimeout(()=>{ el.style.transition='opacity .3s'; el.style.opacity='0'; setTimeout(()=>el.remove(),300); }, 2400);
+  },
+  toastAction(msg, actionLabel, actionFn){
+    const wrap = document.getElementById('toast-wrap');
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.style.pointerEvents = 'auto';
+    el.style.display = 'flex'; el.style.alignItems='center'; el.style.gap='12px';
+    el.innerHTML = `<span style="flex:1;">${U.esc(msg)}</span><span style="color:var(--gold);font-weight:600;cursor:pointer;white-space:nowrap;" data-undo>${U.esc(actionLabel)}</span>`;
+    wrap.appendChild(el);
+    let done = false;
+    el.querySelector('[data-undo]').addEventListener('click', ()=>{ if(done) return; done=true; actionFn(); el.remove(); });
+    setTimeout(()=>{ if(done) return; el.style.transition='opacity .3s'; el.style.opacity='0'; setTimeout(()=>el.remove(),300); }, 6000);
   },
   vibrate(ms){ if(navigator.vibrate) try{navigator.vibrate(ms);}catch(e){} },
   qs(sel,root){ return (root||document).querySelector(sel); },
@@ -467,7 +491,7 @@ const DB_KEY = 'aqari_pro_db_v1';
 
 function seedDB(){
   const propId = U.uid('prop');
-  const units = ['الأرضي','الأول - يمين','الأول - يسار','الثاني - يمين','الثاني - يسار'].map((name,i)=>({
+  const units = ['الأرضي - يسار','الأول - يمين','الأول - يسار','الثاني - يمين','الثاني - يسار'].map((name,i)=>({
     id: U.uid('unit'),
     propertyId: propId,
     name,
@@ -609,10 +633,14 @@ const Modal = {
 const App = {
   route: 'dashboard',
   routeParam: null,
+  _stack: [],
 
   boot(){
     loadDB();
     this.applyIcons();
+    document.addEventListener('click', (e)=>{
+      if(e.target.closest('[data-go-backup]')) Screens.go('settings');
+    });
     if(!DB.settings.onboarded){
       this.showWelcome();
     } else if(DB.settings.security?.pinEnabled){
@@ -624,6 +652,7 @@ const App = {
       if(DB.settings.security?.pinEnabled){ this.showLock(); }
       else { U.toast('قفل PIN غير مفعّل من الإعدادات'); }
     });
+    document.getElementById('back-btn').addEventListener('click', ()=>Screens.back());
   },
 
   applyIcons(){
@@ -757,12 +786,54 @@ const App = {
 
   setActiveNav(section){
     U.qsa('.nav-item').forEach(el=>el.classList.toggle('active', el.dataset.nav===section));
+  },
+
+  backupBannerHtml(){
+    const last = DB.settings.lastBackupAt;
+    const days = last ? U.daysBetween(last, U.today()) : null;
+    const stale = !last || days >= 7;
+    if(!stale) return '';
+    return `
+      <div class="card" style="border-color:rgba(250,204,21,.4); background:rgba(250,204,21,.06);">
+        <div class="card-row" style="align-items:flex-start;">
+          <span style="font-size:20px;">⚠️</span>
+          <div style="flex:1;">
+            <div style="font-size:13px;color:var(--yellow);font-weight:600;">${last?`آخر نسخة احتياطية منذ ${days} يوم`:'لم تُصدَّر أي نسخة احتياطية بعد'}</div>
+            <div class="muted" style="font-size:11.5px;margin-top:4px;line-height:1.8;">
+              يفضَّل تصدير نسخة أسبوعياً. نظام حماية الخصوصية في سفاري (iOS) قد يمسح بيانات التطبيقات المحلية غير المفتوحة لفترة طويلة (عادة بعد نحو أسبوع من عدم الاستخدام) — لا تعتمد على الجهاز وحده.
+            </div>
+            <button class="btn gold sm" data-go-backup style="margin-top:8px;">تصدير نسخة الآن</button>
+          </div>
+        </div>
+      </div>`;
+  },
+
+  storageUsageHtml(){
+    let bytes = 0;
+    try{ bytes = new Blob([localStorage.getItem(DB_KEY)||'']).size; }catch(e){ bytes = (JSON.stringify(DB)||'').length; }
+    const kb = bytes/1024, capKB = 5*1024; // ~5MB conservative cap
+    const pct = Math.min(100, Math.round((kb/capKB)*100));
+    const color = pct>80?'var(--red)':pct>50?'var(--yellow)':'var(--green)';
+    return `
+      <div class="card">
+        <div class="card-row"><span style="font-size:13px;">مساحة التخزين المستخدمة</span><span class="muted" style="font-size:12px;">${kb.toFixed(0)} كيلوبايت من ~5120</span></div>
+        <div class="progress-track"><div class="progress-fill" style="width:${pct}%;background:${color};"></div></div>
+        ${pct>70?`<div class="muted" style="font-size:11px;margin-top:6px;color:var(--yellow);">المساحة تقترب من الامتلاء — احذف الصور غير الضرورية أو صدّر نسخة واستعن بجهاز آخر.</div>`:''}
+      </div>`;
   }
 };
 
 /* ---------------- Screens ---------------- */
 const Screens = {
-  go(route, param){
+  go(route, param, fromBack){
+    const topLevel = ['dashboard','properties','contracts','payments','more'];
+    if(!fromBack){
+      if(topLevel.includes(route)){
+        App._stack = [];
+      } else if(App.route){
+        App._stack.push({route:App.route, param:App.routeParam});
+      }
+    }
     App.route = route; App.routeParam = param;
     const main = ['dashboard','properties','contracts','payments'].includes(route) ? route : null;
     App.setActiveNav(main);
@@ -771,9 +842,17 @@ const Screens = {
     fab.classList.add('hidden');
     fab.onclick = null;
     window.scrollTo(0,0);
+    const backBtn = document.getElementById('back-btn');
+    if(backBtn) backBtn.classList.toggle('hidden', App._stack.length===0);
     const fn = this['render_'+route.replace(/-/g,'_')];
     if(fn) fn.call(this, content, param);
     else content.innerHTML = `<div class="empty-state">صفحة غير موجودة</div>`;
+  },
+
+  back(){
+    const prev = App._stack.pop();
+    if(prev) Screens.go(prev.route, prev.param, true);
+    else Screens.go('dashboard');
   },
 
   /* ---------- Dashboard ---------- */
@@ -793,6 +872,7 @@ const Screens = {
 
     el.innerHTML = `
       <div class="section-title">لوحة التحكم <small>${U.fmtDate(U.today())}</small></div>
+      ${App.backupBannerHtml()}
       <div class="stats-grid">
         <div class="stat-card"><div class="stat-num">${totalUnits}</div><div class="stat-label">إجمالي الوحدات (${totalProps} عقار)</div></div>
         <div class="stat-card green"><div class="stat-num">${rented}</div><div class="stat-label">وحدات مؤجرة</div></div>
@@ -923,8 +1003,7 @@ const Screens = {
     el.querySelector('[data-edit]').addEventListener('click',()=>Forms.property(p.id));
     el.querySelector('[data-del]').addEventListener('click',()=>{
       Modal.confirm('سيتم حذف العقار وكل وحداته وعقوده المرتبطة به. هل أنت متأكد؟', ()=>{
-        Actions.deleteProperty(p.id);
-        Screens.go('properties');
+        Actions.undoableDelete('تم حذف العقار', ()=>Actions.deleteProperty(p.id,true), 'properties');
       });
     });
   },
@@ -984,7 +1063,9 @@ const Screens = {
     });
     el.querySelector('[data-edit]').addEventListener('click',()=>Forms.unit(u.propertyId, u.id));
     el.querySelector('[data-del]').addEventListener('click',()=>{
-      Modal.confirm('سيتم حذف الوحدة وكل عقودها. متابعة؟', ()=>{ Actions.deleteUnit(u.id); Screens.go('property-detail', u.propertyId); });
+      Modal.confirm('سيتم حذف الوحدة وكل عقودها. متابعة؟', ()=>{
+        Actions.undoableDelete('تم حذف الوحدة', ()=>Actions.deleteUnit(u.id,true), 'property-detail', u.propertyId);
+      });
     });
     if(activeContract){
       el.querySelector('[data-open-contract]').addEventListener('click',()=>Screens.go('contract-detail', activeContract.id));
@@ -1019,14 +1100,21 @@ const Screens = {
   render_tenants(el){
     const fab = document.getElementById('fab-add');
     fab.classList.remove('hidden'); fab.onclick = ()=>Forms.tenant();
-    el.innerHTML = `<div class="section-title">المستأجرون <small>${DB.tenants.length}</small></div><div id="t-list"></div>`;
+    const q = (App._tenantQuery||'').trim().toLowerCase();
+    el.innerHTML = `<div class="section-title">المستأجرون <small>${DB.tenants.length}</small></div>
+      ${DB.tenants.length?`<div class="field"><input id="t-search" placeholder="🔍 بحث بالاسم أو الهاتف..." value="${U.esc(App._tenantQuery||'')}"></div>`:''}
+      <div id="t-list"></div>`;
+    if(el.querySelector('#t-search')) el.querySelector('#t-search').addEventListener('input', e=>{ App._tenantQuery = e.target.value; Screens.go('tenants'); });
     const list = el.querySelector('#t-list');
     if(!DB.tenants.length){
       list.innerHTML = `<div class="empty-state"><div class="ic">👤</div><div class="t">لا يوجد مستأجرون بعد</div><button class="btn primary" data-add>+ إضافة مستأجر</button></div>`;
       list.querySelector('[data-add]').addEventListener('click',()=>Forms.tenant());
       return;
     }
-    list.innerHTML = DB.tenants.map(t=>{
+    let tenants = DB.tenants;
+    if(q) tenants = tenants.filter(t=> (t.name+' '+(t.phone||'')).toLowerCase().includes(q));
+    if(!tenants.length){ list.innerHTML = `<div class="empty-state"><div class="t">لا نتائج</div></div>`; return; }
+    list.innerHTML = tenants.map(t=>{
       const contracts = Q.contractsOfTenant(t.id);
       const active = contracts.find(c=>c.status==='active');
       return `<div class="list-item" data-open="${t.id}">
@@ -1070,7 +1158,42 @@ const Screens = {
       </div>
       <div class="section-title" style="font-size:17px;">العقود <small>${contracts.length}</small></div>
       <div id="tc-list"></div>
+
+      <div class="section-title" style="font-size:17px;">📎 المستندات <small>${(t.tenantDocuments||[]).length}</small></div>
+      <div id="doc-list"></div>
+      <input type="file" id="doc-file" accept="image/*,.pdf" class="hidden">
+      <button class="btn ghost sm" id="add-doc" style="margin-top:8px;">+ إضافة مستند (هوية، عقد عمل...)</button>
     `;
+    t.tenantDocuments = t.tenantDocuments||[];
+    const dl = el.querySelector('#doc-list');
+    function drawDocs(){
+      dl.innerHTML = t.tenantDocuments.length ? t.tenantDocuments.map((d,i)=>`
+        <div class="card" style="padding:10px 12px;">
+          <div class="card-row">
+            <span style="font-size:13px;">📄 ${U.esc(d.name)}</span>
+            <span style="display:flex;gap:8px;">
+              <span data-view="${i}" style="cursor:pointer;color:var(--purple);font-size:12px;">عرض</span>
+              <span data-rm="${i}" style="cursor:pointer;color:var(--red);font-size:12px;">حذف</span>
+            </span>
+          </div>
+        </div>`).join('') : `<div class="muted" style="font-size:12.5px;">لا مستندات مرفوعة</div>`;
+      U.qsa('[data-view]', dl).forEach(x=>x.addEventListener('click',()=>window.open(t.tenantDocuments[x.dataset.view].data,'_blank')));
+      U.qsa('[data-rm]', dl).forEach(x=>x.addEventListener('click',()=>{
+        t.tenantDocuments.splice(Number(x.dataset.rm),1); saveDB(); drawDocs(); U.toast('تم الحذف','success');
+      }));
+    }
+    drawDocs();
+    el.querySelector('#add-doc').addEventListener('click',()=>el.querySelector('#doc-file').click());
+    el.querySelector('#doc-file').addEventListener('change', async (e)=>{
+      const f = e.target.files[0]; if(!f) return;
+      if(f.size > 3*1024*1024){ U.toast('الملف كبير جداً (الحد 3 ميجابايت)','error'); return; }
+      let dataUrl;
+      if(f.type.startsWith('image/')) dataUrl = await U.compressImage(f, 1000, 0.75);
+      else dataUrl = await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(f); });
+      t.tenantDocuments.push({name:f.name, data:dataUrl, addedAt:U.now()});
+      logAction('إضافة مستند مستأجر', t.name+': '+f.name);
+      saveDB(); drawDocs(); U.toast('تمت الإضافة','success');
+    });
     const cl = el.querySelector('#tc-list');
     if(!contracts.length) cl.innerHTML = `<div class="muted" style="font-size:12.5px;">لا توجد عقود</div>`;
     else cl.innerHTML = contracts.map(c=>{
@@ -1086,9 +1209,10 @@ const Screens = {
     el.querySelector('[data-edit]').addEventListener('click',()=>Forms.tenant(t.id));
     el.querySelector('[data-del]').addEventListener('click',()=>{
       Modal.confirm('سيتم حذف المستأجر (لن يتم حذف عقوده). متابعة؟', ()=>{
-        DB.tenants = DB.tenants.filter(x=>x.id!==t.id);
-        logAction('حذف مستأجر', t.name); saveDB();
-        Screens.go('tenants');
+        Actions.undoableDelete('تم حذف المستأجر', ()=>{
+          DB.tenants = DB.tenants.filter(x=>x.id!==t.id);
+          logAction('حذف مستأجر', t.name);
+        }, 'tenants');
       });
     });
     if(t.phone) el.querySelector('[data-wa]').addEventListener('click',()=>Actions.whatsapp(t.phone, `مرحباً ${t.name}،`));
@@ -1099,17 +1223,24 @@ const Screens = {
     const fab = document.getElementById('fab-add');
     fab.classList.remove('hidden'); fab.onclick = ()=>Forms.contractPickUnit();
     const tab = App._contractsTab || 'all';
+    const q = (App._contractQuery||'').trim().toLowerCase();
     el.innerHTML = `
       <div class="section-title">العقود <small>${DB.contracts.length}</small></div>
+      <div class="field"><input id="c-search" placeholder="🔍 بحث باسم المستأجر أو الوحدة أو رقم العقد..." value="${U.esc(App._contractQuery||'')}"></div>
       <div class="tabs">
         ${[['all','الكل'],['active','سارية'],['ended','منتهية'],['cancelled','ملغاة']].map(([k,l])=>
           `<div class="tab ${tab===k?'active':''}" data-tab="${k}">${l}</div>`).join('')}
       </div>
       <div id="c-list"></div>
     `;
+    el.querySelector('#c-search').addEventListener('input', e=>{ App._contractQuery = e.target.value; Screens.go('contracts'); });
     U.qsa('[data-tab]', el).forEach(tb=>tb.addEventListener('click',()=>{ App._contractsTab = tb.dataset.tab; Screens.go('contracts'); }));
     let list = DB.contracts.slice().sort((a,b)=>b.createdAt<a.createdAt?-1:1);
     if(tab!=='all') list = list.filter(c=>c.status===tab);
+    if(q) list = list.filter(c=>{
+      const u = Q.unit(c.unitId), t = Q.tenant(c.tenantId);
+      return ((t?.name||'')+' '+(u?.name||'')+' '+(c.contractNumber||'')).toLowerCase().includes(q);
+    });
     const cl = el.querySelector('#c-list');
     if(!list.length){ cl.innerHTML = `<div class="empty-state"><div class="ic">📄</div><div class="t">لا توجد عقود</div></div>`; return; }
     cl.innerHTML = list.map(c=>{
@@ -1159,12 +1290,14 @@ const Screens = {
       ctab.innerHTML = `<div class="card muted" style="font-size:13px;line-height:2.1;">
         الوحدة: ${U.esc(u?.name||'—')} — ${U.esc(p?.name||'—')}<br>
         المستأجر: ${U.esc(t?.name||'—')} — ${U.esc(t?.phone||'')}<br>
+        تاريخ التحرير: ${U.fmtDate(c.signDate||c.createdAt)}<br>
         المدة: ${U.fmtDate(c.startDate)} → ${U.fmtDate(c.endDate)}<br>
-        الإيجار الشهري: ${U.money(c.rentAmount)}<br>
-        التأمين (الوديعة): ${U.money(c.deposit)}<br>
-        يوم استحقاق الدفع: يوم ${c.dueDay||1} من كل شهر<br>
-        الغرامة على التأخير: ${U.esc(c.lateFee||'—')}<br>
-        مهلة الفسخ: ${U.esc(c.terminationNotice||'—')}
+        الإيجار: ${U.money(c.rentAmount)} — ${c.paymentFrequency==='monthly'?'شهرياً':c.paymentFrequency==='quarterly'?'كل 3 أشهر':'سنوياً'} (${c.payInAdvance!==false?'مقدماً':'بنهاية الفترة'})<br>
+        التأمين (الضمان): ${U.money(c.deposit)}<br>
+        يوم استحقاق الدفع: يوم ${c.dueDay||1}<br>
+        الغرض من الاستخدام: ${U.esc(c.usagePurpose||'السكن الخاص فقط')}<br>
+        غرامة تأخير الإخلاء: ${c.vacateLateFee?U.money(c.vacateLateFee)+' / يوم':'—'}<br>
+        مهلة الفسخ التلقائي عند التأخر بالسداد: ${c.terminationGraceDays||15} يوماً
       </div>`;
     } else if(tab==='inventory'){
       ctab.innerHTML = Inventory.renderSummary(c);
@@ -1224,17 +1357,24 @@ const Screens = {
   /* ---------- Payments ---------- */
   render_payments(el){
     const tab = App._paymentsTab || 'all';
+    const q = (App._paymentQuery||'').trim().toLowerCase();
     el.innerHTML = `
       <div class="section-title">الدفعات <small>${DB.payments.length}</small></div>
+      <div class="field"><input id="p-search" placeholder="🔍 بحث باسم المستأجر أو الوحدة..." value="${U.esc(App._paymentQuery||'')}"></div>
       <div class="tabs">
         ${[['all','الكل'],['due','مستحقة'],['late','متأخرة'],['partial','جزئية'],['paid','مدفوعة']].map(([k,l])=>
           `<div class="tab ${tab===k?'active':''}" data-tab="${k}">${l}</div>`).join('')}
       </div>
       <div id="p-list"></div>
     `;
+    el.querySelector('#p-search').addEventListener('input', e=>{ App._paymentQuery = e.target.value; Screens.go('payments'); });
     U.qsa('[data-tab]', el).forEach(tb=>tb.addEventListener('click',()=>{ App._paymentsTab = tb.dataset.tab; Screens.go('payments'); }));
     let list = DB.payments.slice().sort((a,b)=>a.dueDate<b.dueDate?-1:1);
     if(tab!=='all') list = list.filter(p=>Q.payStatus(p)===tab);
+    if(q) list = list.filter(p=>{
+      const c = Q.contract(p.contractId), t = c?Q.tenant(c.tenantId):null, u = c?Q.unit(c.unitId):null;
+      return ((t?.name||'')+' '+(u?.name||'')).toLowerCase().includes(q);
+    });
     const pl = el.querySelector('#p-list');
     if(!list.length){ pl.innerHTML = `<div class="empty-state"><div class="ic">💰</div><div class="t">لا توجد دفعات</div></div>`; return; }
     pl.innerHTML = list.map(p=>{
@@ -1263,9 +1403,10 @@ const Screens = {
       {id:'finance', ic:'📊', label:'المالية والتقارير'},
       {id:'receipt-tool', ic:'🧾', label:'مولّد إيصال استلام مبلغ'},
       {id:'tenants', ic:'👤', label:'المستأجرون'},
+      {id:'audit-log', ic:'🕘', label:'سجل النشاط'},
       {id:'settings', ic:'⚙️', label:'الإعدادات'},
     ];
-    el.innerHTML = `<div class="section-title">المزيد</div>` + items.map(it=>`
+    el.innerHTML = `<div class="section-title">المزيد</div>` + App.backupBannerHtml() + items.map(it=>`
       <div class="card" data-go="${it.id}" style="cursor:pointer;">
         <div class="card-row">
           <span style="display:flex;align-items:center;gap:10px;font-size:14.5px;"><span style="font-size:20px;">${it.ic}</span>${it.label}</span>
@@ -1273,6 +1414,27 @@ const Screens = {
         </div>
       </div>`).join('');
     U.qsa('[data-go]', el).forEach(c=>c.addEventListener('click',()=>Screens.go(c.dataset.go)));
+  },
+
+  /* ---------- Audit log ---------- */
+  render_audit_log(el){
+    const q = (App._auditQuery||'').trim().toLowerCase();
+    let logs = DB.auditLog||[];
+    if(q) logs = logs.filter(l=> (l.action+' '+(l.detail||'')).toLowerCase().includes(q));
+    el.innerHTML = `
+      <div class="section-title">سجل النشاط <small>${DB.auditLog.length} عملية</small></div>
+      <div class="field"><input id="audit-search" placeholder="🔍 بحث في السجل..." value="${U.esc(App._auditQuery||'')}"></div>
+      <div id="audit-list"></div>
+    `;
+    const list = el.querySelector('#audit-list');
+    list.innerHTML = logs.length ? logs.map(l=>`
+      <div class="card">
+        <div class="card-row">
+          <span style="font-size:13.5px;">${U.esc(l.action)}${l.detail?` — <span class="muted">${U.esc(l.detail)}</span>`:''}</span>
+          <span class="muted" style="font-size:11px;white-space:nowrap;">${new Date(l.at).toLocaleString('ar-EG',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
+        </div>
+      </div>`).join('') : `<div class="empty-state"><div class="ic">🕘</div><div class="t">لا نتائج</div></div>`;
+    el.querySelector('#audit-search').addEventListener('input', (e)=>{ App._auditQuery = e.target.value; Screens.go('audit-log'); });
   },
 
   /* ---------- Maintenance list ---------- */
@@ -1491,13 +1653,18 @@ const Screens = {
 
       <div class="card">
         <b style="font-size:14px;">💾 النسخ الاحتياطي</b>
-        <p class="muted" style="font-size:12px;line-height:1.8;margin:8px 0;">يُنصح بتصدير نسخة أسبوعياً. لا يوجد نسخ احتياطي تلقائي.</p>
+        <p class="muted" style="font-size:12px;line-height:1.8;margin:8px 0;">
+          يُنصح بتصدير نسخة أسبوعياً. لا يوجد نسخ احتياطي تلقائي.
+          ${s.lastBackupAt?`<br>آخر نسخة: ${U.fmtDate(s.lastBackupAt)} (منذ ${U.daysBetween(s.lastBackupAt,U.today())} يوم)`:'<br>لم يتم التصدير بعد.'}
+        </p>
         <div class="btn-row">
           <button class="btn gold sm" id="export-backup" style="flex:1;">تصدير JSON</button>
           <button class="btn ghost sm" id="import-backup" style="flex:1;">استيراد JSON</button>
         </div>
         <input type="file" id="import-file" accept="application/json" class="hidden">
       </div>
+
+      ${App.storageUsageHtml()}
 
       <div class="card">
         <b style="font-size:14px;">📥 استيراد CSV بالجملة</b>
@@ -1555,8 +1722,10 @@ const Screens = {
     });
     el.querySelector('#export-backup').addEventListener('click',()=>{
       U.downloadFile(`aqari-backup-${U.today()}.json`, JSON.stringify(DB, null, 2));
+      s.lastBackupAt = U.today();
       logAction('تصدير نسخة احتياطية'); saveDB();
       U.toast('تم تصدير النسخة الاحتياطية','success');
+      Screens.go('settings');
     });
     el.querySelector('#import-backup').addEventListener('click',()=>el.querySelector('#import-file').click());
     el.querySelector('#import-file').addEventListener('change', (e)=>{
@@ -1739,21 +1908,39 @@ const Forms = {
   contract(unitId, id){
     const editing = !!id;
     const c = editing ? Q.contract(id) : {
-      tenantId:'', unitId, startDate:U.today(), endDate:'', rentAmount:'', deposit:'',
-      dueDay:1, lateFee:'', terminationNotice:'', paymentFrequency:'monthly'
+      tenantId:'', unitId, signDate:U.today(), startDate:U.today(), endDate:'', rentAmount:'', deposit:'',
+      dueDay:1, paymentFrequency:'monthly', payInAdvance:true,
+      vacateLateFee:'', terminationGraceDays:15, usagePurpose:'السكن الخاص فقط',
+      witness1Name:'', witness2Name:''
     };
     if(!DB.tenants.length){ U.toast('أضف مستأجراً أولاً قبل إنشاء عقد','error'); return; }
+    if(!editing){
+      const conflict = Q.activeContractOfUnit(unitId);
+      if(conflict){
+        const ct = Q.tenant(conflict.tenantId);
+        U.toast(`تنبيه: يوجد عقد ساري بالفعل لهذه الوحدة مع ${ct?.name||'مستأجر آخر'}`, 'error');
+        return;
+      }
+    }
     const html = `
+      ${editing? `<div class="field"><label>الوحدة</label>
+        <select id="f-unit">${DB.units.map(u=>{
+          const pr = Q.property(u.propertyId);
+          return `<option value="${u.id}" ${c.unitId===u.id?'selected':''}>${U.esc(pr?.name||'')} — ${U.esc(u.name)}</option>`;
+        }).join('')}</select>
+        <small class="hint">غيّر الوحدة فقط لتصحيح خطأ في الإدخال — لا يُنصح بتغييرها لعقد فعلي جارٍ.</small>
+      </div>` : ''}
       <div class="field"><label>المستأجر</label>
         <select id="f-tenant">${DB.tenants.map(t=>`<option value="${t.id}" ${c.tenantId===t.id?'selected':''}>${U.esc(t.name)}</option>`).join('')}</select>
       </div>
+      <div class="field"><label>تاريخ تحرير العقد</label><input type="date" id="f-signdate" value="${c.signDate||U.today()}"></div>
       <div class="field-row">
         <div class="field"><label>تاريخ البداية</label><input type="date" id="f-start" value="${c.startDate}"></div>
         <div class="field"><label>تاريخ النهاية</label><input type="date" id="f-end" value="${c.endDate}"></div>
       </div>
       <div class="field-row">
         <div class="field"><label>الإيجار الشهري</label><input type="number" id="f-rent" value="${U.esc(c.rentAmount)}"></div>
-        <div class="field"><label>مبلغ التأمين</label><input type="number" id="f-deposit" value="${U.esc(c.deposit)}"></div>
+        <div class="field"><label>مبلغ التأمين (الضمان)</label><input type="number" id="f-deposit" value="${U.esc(c.deposit)}"></div>
       </div>
       <div class="field-row">
         <div class="field"><label>يوم استحقاق الدفع (1-28)</label><input type="number" min="1" max="28" id="f-dueday" value="${U.esc(c.dueDay||1)}"></div>
@@ -1763,8 +1950,18 @@ const Forms = {
           <option value="yearly" ${c.paymentFrequency==='yearly'?'selected':''}>سنوي</option>
         </select></div>
       </div>
-      <div class="field"><label>غرامة التأخير</label><input id="f-latefee" value="${U.esc(c.lateFee||'1% عن كل يوم تأخير من قيمة القسط')}"></div>
-      <div class="field"><label>مهلة إشعار الفسخ</label><input id="f-notice" value="${U.esc(c.terminationNotice||'30 يوماً قبل الموعد المطلوب')}"></div>
+      <div class="checkbox-row" style="margin-bottom:12px;"><input type="checkbox" id="f-advance" ${c.payInAdvance!==false?'checked':''}><label for="f-advance">الدفع مقدماً عن كل فترة (غير ذلك: بنهاية الفترة)</label></div>
+      <div class="field"><label>الغرض من الاستخدام</label><input id="f-usage" value="${U.esc(c.usagePurpose||'السكن الخاص فقط')}"></div>
+      <div class="field-row">
+        <div class="field"><label>غرامة التأخير في الإخلاء (يومياً)</label><input type="number" id="f-vacatefee" value="${U.esc(c.vacateLateFee||'')}" placeholder="مبلغ باليوم"></div>
+        <div class="field"><label>مهلة تأخر السداد قبل الفسخ التلقائي (أيام)</label><input type="number" id="f-gracedays" value="${U.esc(c.terminationGraceDays||15)}"></div>
+      </div>
+      <div class="divider"></div>
+      <div class="muted" style="font-size:12px;margin-bottom:8px;">بيانات الشهود (اختياري، تُطبع بمكان للتوقيع اليدوي)</div>
+      <div class="field-row">
+        <div class="field"><label>الشاهد الأول</label><input id="f-w1" value="${U.esc(c.witness1Name||'')}"></div>
+        <div class="field"><label>الشاهد الثاني</label><input id="f-w2" value="${U.esc(c.witness2Name||'')}"></div>
+      </div>
       <button class="btn primary" id="f-save">${editing?'حفظ التعديلات':'إنشاء العقد'}</button>
     `;
     const el = Modal.open(html, {title: editing?'تعديل عقد':'عقد إيجار جديد'});
@@ -1775,20 +1972,52 @@ const Forms = {
       const rentAmount = Number(el.querySelector('#f-rent').value)||0;
       if(!tenantId || !startDate || !endDate || !rentAmount){ U.toast('أكمل الحقول الأساسية','error'); return; }
       const data = {
-        tenantId, startDate, endDate, rentAmount, deposit: Number(el.querySelector('#f-deposit').value)||0,
+        tenantId, signDate: el.querySelector('#f-signdate').value, startDate, endDate, rentAmount,
+        deposit: Number(el.querySelector('#f-deposit').value)||0,
         dueDay: Number(el.querySelector('#f-dueday').value)||1, paymentFrequency: el.querySelector('#f-freq').value,
-        lateFee: el.querySelector('#f-latefee').value, terminationNotice: el.querySelector('#f-notice').value
+        payInAdvance: el.querySelector('#f-advance').checked,
+        usagePurpose: el.querySelector('#f-usage').value,
+        vacateLateFee: el.querySelector('#f-vacatefee').value,
+        terminationGraceDays: Number(el.querySelector('#f-gracedays').value)||15,
+        witness1Name: el.querySelector('#f-w1').value, witness2Name: el.querySelector('#f-w2').value
       };
       if(editing){
+        const oldRent = Number(c.rentAmount)||0;
+        const oldFreq = c.paymentFrequency;
+        const newUnitId = el.querySelector('#f-unit') ? el.querySelector('#f-unit').value : c.unitId;
+        if(newUnitId !== c.unitId){
+          const conflict = DB.contracts.find(x=>x.id!==c.id && x.unitId===newUnitId && x.status==='active');
+          if(conflict){ U.toast('يوجد عقد ساري بالفعل على الوحدة المُختارة','error'); return; }
+          const oldUnit = Q.unit(c.unitId), newUnit = Q.unit(newUnitId);
+          if(c.status==='active'){
+            if(oldUnit) oldUnit.status='available';
+            if(newUnit) newUnit.status='rented';
+          }
+          logAction('نقل عقد لوحدة أخرى', (oldUnit?.name||'')+' → '+(newUnit?.name||''));
+          c.unitId = newUnitId;
+        }
         Object.assign(c, data); logAction('تعديل عقد', c.contractNumber);
         saveDB(); Modal.close(); U.toast('تم الحفظ','success');
+        if(oldRent !== rentAmount){
+          const stepMonths = oldFreq==='yearly'?12:oldFreq==='quarterly'?3:1;
+          const futureUnpaid = DB.payments.filter(p=>p.contractId===c.id && p.dueDate>=U.today() && Number(p.paidAmount||0)===0);
+          if(futureUnpaid.length){
+            Modal.confirm(`تم تغيير الإيجار. هل تريد تحديث ${futureUnpaid.length} دفعة مستقبلية غير مدفوعة إلى القيمة الجديدة؟`, ()=>{
+              const newStepMonths = c.paymentFrequency==='yearly'?12:c.paymentFrequency==='quarterly'?3:1;
+              futureUnpaid.forEach(p=> p.amount = rentAmount * newStepMonths);
+              logAction('تحديث دفعات مستقبلية', c.contractNumber);
+              saveDB(); U.toast('تم تحديث الدفعات المستقبلية','success');
+              Screens.go('contract-detail', id);
+            }, 'تحديث الدفعات المستقبلية');
+          }
+        }
         Screens.go('contract-detail', id);
       } else {
         DB.settings.contractCounter = (DB.settings.contractCounter||0)+1;
         const contractNumber = 'CN-' + new Date().getFullYear() + '-' + String(DB.settings.contractCounter).padStart(3,'0');
         const verifyCode = Math.random().toString(36).slice(2,8).toUpperCase();
         const newC = {
-          id:U.uid('con'), contractNumber, verifyCode, status:'active', createdAt:U.now(),
+          id:U.uid('con'), unitId, contractNumber, verifyCode, status:'active', createdAt:U.now(),
           inventory:[], handoverIn:null, handoverOut:null, landlordSignature:'', tenantSignature:'',
           ...data
         };
@@ -1906,8 +2135,11 @@ const Forms = {
     });
     if(editing) el.querySelector('#f-del').addEventListener('click',()=>{
       Modal.confirm('حذف بلاغ الصيانة؟', ()=>{
-        DB.maintenance = DB.maintenance.filter(x=>x.id!==id); saveDB(); Modal.close();
-        Screens.go('unit-detail', unitId);
+        Modal.close();
+        Actions.undoableDelete('تم حذف بلاغ الصيانة', ()=>{
+          DB.maintenance = DB.maintenance.filter(x=>x.id!==id);
+          logAction('حذف صيانة');
+        }, 'unit-detail', unitId);
       });
     });
   }
@@ -2065,6 +2297,15 @@ const Signature = {
 
 /* ---------------- Actions ---------------- */
 const Actions = {
+  snapshot(){ return JSON.parse(JSON.stringify(DB)); },
+  undoableDelete(label, doDelete, afterRoute, afterParam){
+    const snap = Actions.snapshot();
+    doDelete();
+    saveDB();
+    U.toastAction(label, 'تراجع', ()=>{
+      DB = snap; saveDB(); U.toast('تم التراجع','success'); Screens.go(afterRoute, afterParam);
+    });
+  },
   generatePaymentSchedule(c){
     const start = new Date(c.startDate), end = new Date(c.endDate);
     const stepMonths = c.paymentFrequency==='yearly'?12 : c.paymentFrequency==='quarterly'?3 : 1;
@@ -2101,7 +2342,7 @@ const Actions = {
       Screens.go('contract-detail', newC.id);
     }, 'تجديد العقد');
   },
-  deleteProperty(id){
+  deleteProperty(id, silent){
     const units = Q.unitsOfProperty(id).map(u=>u.id);
     DB.contracts = DB.contracts.filter(c=>{
       if(units.includes(c.unitId)){ DB.payments = DB.payments.filter(p=>p.contractId!==c.id); return false; }
@@ -2110,16 +2351,18 @@ const Actions = {
     DB.units = DB.units.filter(u=>u.propertyId!==id);
     DB.maintenance = DB.maintenance.filter(m=>!units.includes(m.unitId));
     DB.properties = DB.properties.filter(p=>p.id!==id);
-    logAction('حذف عقار'); saveDB(); U.toast('تم الحذف','success');
+    logAction('حذف عقار');
+    if(!silent){ saveDB(); U.toast('تم الحذف','success'); }
   },
-  deleteUnit(id){
+  deleteUnit(id, silent){
     DB.contracts = DB.contracts.filter(c=>{
       if(c.unitId===id){ DB.payments = DB.payments.filter(p=>p.contractId!==c.id); return false; }
       return true;
     });
     DB.maintenance = DB.maintenance.filter(m=>m.unitId!==id);
     DB.units = DB.units.filter(u=>u.id!==id);
-    logAction('حذف وحدة'); saveDB(); U.toast('تم الحذف','success');
+    logAction('حذف وحدة');
+    if(!silent){ saveDB(); U.toast('تم الحذف','success'); }
   },
   whatsapp(phone, msg){
     const clean = String(phone).replace(/[^\d+]/g,'').replace(/^0/,'');
@@ -2214,27 +2457,34 @@ const Documents = {
     const invByCategory = {};
     inv.forEach(it=>{ (invByCategory[it.category] = invByCategory[it.category]||[]).push(it); });
 
+    const freqText = c.paymentFrequency==='monthly'?'شهرياً':(c.paymentFrequency==='quarterly'?'كل ثلاثة أشهر':'سنوياً');
+    const advanceText = c.payInAdvance!==false ? 'مقدماً' : 'بنهاية كل فترة استحقاق';
+    const durationText = U.durationText(c.startDate, c.endDate);
+    const locationText = [p?.district, p?.city].filter(Boolean).join('، ') || (p?.address||'—');
+
     const clauses = `
       <ol class="clauses">
-        <li><b>البند الأول - محل العقد:</b> يؤجّر الطرف الأول (المؤجر) للطرف الثاني (المستأجر) الوحدة السكنية المفروشة المعرَّفة أعلاه، بكامل مرافقها ومنقولاتها الموضحة في ملحق قائمة المنقولات المرفق بهذا العقد.</li>
-        <li><b>البند الثاني - مدة الإيجار:</b> مدة هذا العقد من تاريخ ${U.fmtDate(c.startDate)} وحتى تاريخ ${U.fmtDate(c.endDate)}، وتُجدَّد المدة باتفاق الطرفين كتابياً قبل انتهائها.</li>
-        <li><b>البند الثالث - قيمة الإيجار وطريقة السداد:</b> يلتزم الطرف الثاني بسداد مبلغ وقدره ${U.money(c.rentAmount)} ${c.paymentFrequency==='monthly'?'شهرياً':(c.paymentFrequency==='quarterly'?'كل ثلاثة أشهر':'سنوياً')}، في موعد أقصاه اليوم ${c.dueDay||1} من كل فترة استحقاق.</li>
-        <li><b>البند الرابع - التأمين (الوديعة):</b> يدفع الطرف الثاني مبلغ تأمين قدره ${U.money(c.deposit)} يُرَدّ بالكامل عند انتهاء العقد وتسليم الوحدة بحالة سليمة، خصماً منه قيمة أي أضرار أو مستحقات متأخرة إن وُجدت.</li>
-        <li><b>البند الخامس - الغرامة على التأخير:</b> في حال التأخر عن سداد أي قسط عن موعده، يُطبَّق على الطرف الثاني: ${U.esc(c.lateFee||'غرامة تأخير وفق اتفاق الطرفين')}.</li>
-        <li><b>البند السادس - الالتزام بالمحافظة على الوحدة:</b> يلتزم الطرف الثاني بالمحافظة على الوحدة ومنقولاتها المذكورة في الملحق المرفق، وإعادتها بنفس الحالة التي استلمها بها (باستثناء الاستهلاك الطبيعي)، ويتحمل تكلفة إصلاح أي تلف ناتج عن سوء الاستخدام.</li>
-        <li><b>البند السابع - الصيانة:</b> يتحمل الطرف الأول أعمال الصيانة الأساسية والهيكلية للوحدة، بينما يتحمل الطرف الثاني الصيانة الدورية البسيطة الناتجة عن الاستخدام اليومي.</li>
-        <li><b>البند الثامن - إنهاء العقد وإشعار الفسخ:</b> يجوز لأي من الطرفين إنهاء هذا العقد بإشعار كتابي مسبق مدته: ${U.esc(c.terminationNotice||'وفق اتفاق الطرفين')}. ويُحظَّر على الطرف الثاني التنازل عن الوحدة أو تأجيرها من الباطن دون موافقة كتابية من الطرف الأول.</li>
-        <li><b>البند التاسع - أحكام عامة:</b> يُعتبر ملحق قائمة المنقولات ومحضر الاستلام جزءاً لا يتجزأ من هذا العقد. وفي حال نشوء أي نزاع يُحتكم فيه إلى القوانين والأعراف المرعية محلياً، وتُعتبر النسخة الموقعة من الطرفين هي المرجع المعتمد.</li>
+        <li><b>1. مدة الإيجار:</b> مدة هذا العقد هي ${durationText}، تبدأ من تاريخ ${U.fmtDate(c.startDate)} وتنتهي في ${U.fmtDate(c.endDate)}. ولا يتجدد العقد إلا باتفاق خطي جديد بين الطرفين.</li>
+        <li><b>2. قيمة الإيجار:</b> اتفق الطرفان على أن تكون أجرة الشقة مبلغ ${U.money(c.rentAmount)}، تُدفع ${advanceText} ${freqText}، في موعد أقصاه اليوم ${c.dueDay||1} من كل شهر/فترة.</li>
+        <li><b>3. التأمين (الضمان):</b> دفع المستأجر مبلغ ${U.money(c.deposit)} كتأمين مسترد. لا يحق للمستأجر خصم هذا المبلغ من الإيجار، ويُرد له بعد إخلاء الشقة وتسليمها بحالتها الأصلية وبعد التأكد من سداد كافة الفواتير.</li>
+        <li><b>4. حالة الشقة والأثاث:</b> يقر المستأجر بأنه عاين الشقة والأثاث (حسب قائمة المنقولات المرفقة) ووجدها بحالة جيدة، ويلتزم بالحفاظ عليها. يتحمل المستأجر تكلفة إصلاح أي تلف يطرأ نتيجة سوء الاستخدام.</li>
+        <li><b>5. الالتزامات المالية:</b> يلتزم المستأجر بسداد فواتير (الكهرباء، المياه، رسوم النفايات) بانتظام، ويُعتبر عدم السداد إخلالاً ببنود العقد.</li>
+        <li><b>6. حظر التأجير من الباطن:</b> يمنع منعاً باتاً على المستأجر تأجير الشقة من الباطن، أو التنازل عن العقد للغير، أو إجراء أي تعديلات أو ثقوب في الجدران دون موافقة المؤجر الخطية.</li>
+        <li><b>7. الاستخدام:</b> الشقة مخصصة لـ${U.esc(c.usagePurpose||'السكن الخاص فقط')}، ويمنع استخدامها لأي أغراض أخرى.</li>
+        <li><b>8. الإخلاء:</b> عند انتهاء العقد، يلتزم المستأجر بالإخلاء وتسليم المفاتيح في الموعد المحدد. في حال التأخر عن الإخلاء، يلتزم المستأجر بدفع غرامة يومية قدرها ${c.vacateLateFee?U.money(c.vacateLateFee):'وفق اتفاق الطرفين'} عن كل يوم تأخير.</li>
+        <li><b>9. إنهاء العقد:</b> في حال تأخر المستأجر عن سداد الإيجار لمدة ${c.terminationGraceDays||15} يوماً، أو مخالفة أي بند من بنود العقد، يحق للمؤجر اعتبار العقد مفسوخاً تلقائياً دون حاجة لتنبيه أو حكم قضائي.</li>
       </ol>`;
 
-    const invHtml = Object.keys(invByCategory).length ? `
-      <h2>ملحق (1): قائمة المنقولات</h2>
+    const invHtml = `
+      <h2>ملحق قائمة المنقولات</h2>
+      ${Object.keys(invByCategory).length ? `
       <table><thead><tr><th>الفئة</th><th>القطعة</th><th>العدد</th></tr></thead><tbody>
       ${Object.entries(invByCategory).map(([cat,items])=>items.map(it=>`<tr><td>${U.esc(cat)}</td><td>${U.esc(it.name)}</td><td>${it.qty}</td></tr>`).join('')).join('')}
-      </tbody></table>` : '';
+      </tbody></table>` : `<p class="muted">لم تُدرَج قائمة منقولات بعد لهذا العقد.</p>`}
+      <p class="muted">(جرد كامل للأثاث والأجهزة الكهربائية، يوقّع عليه الطرفان.)</p>`;
 
     const hoHtml = (c.handoverIn || c.handoverOut) ? `
-      <h2>ملحق (2): محضر حالة الوحدة</h2>
+      <h2>ملحق محضر حالة الوحدة</h2>
       <div class="row2">
         ${c.handoverIn?`<div class="box"><b>عند الاستلام (${U.fmtDate(c.handoverIn.date)})</b><br>${Handover.fields.map(([k,l])=>`${l}: ${U.esc(c.handoverIn[k]||'—')}`).join('<br>')}</div>`:''}
         ${c.handoverOut?`<div class="box"><b>عند التسليم (${U.fmtDate(c.handoverOut.date)})</b><br>${Handover.fields.map(([k,l])=>`${l}: ${U.esc(c.handoverOut[k]||'—')}`).join('<br>')}</div>`:''}
@@ -2242,15 +2492,16 @@ const Documents = {
 
     const body = `
       <div class="header-strip">
-        <div><h1>عقد إيجار شقة مفروشة</h1><div class="muted">رقم العقد: ${c.contractNumber} — رمز التحقق: ${c.verifyCode}</div></div>
+        <div><h1>عقد إيجار شقة (مفروشة)</h1><div class="muted">رقم العقد: ${c.contractNumber} — رمز التحقق: ${c.verifyCode}</div></div>
         <div id="qr"></div>
       </div>
+      <p>إنه في يوم ${new Date(c.signDate||c.createdAt).toLocaleDateString('ar-EG',{weekday:'long'})} الموافق ${U.fmtDate(c.signDate||c.createdAt)}م تم الاتفاق بين كل من:</p>
       <div class="row2">
-        <div class="box"><b>الطرف الأول (المؤجر)</b><br>${U.esc(owner.name||'—')}<br>هوية: ${U.esc(owner.idNumber||'—')}<br>العنوان: ${U.esc(owner.address||'—')}<br>هاتف: ${U.esc(owner.phone||'—')}</div>
-        <div class="box"><b>الطرف الثاني (المستأجر)</b><br>${U.esc(t?.name||'—')}<br>هوية: ${U.esc(t?.idNumber||'—')}<br>العنوان: ${U.esc(t?.address||'—')}<br>هاتف: ${U.esc(t?.phone||'—')}</div>
+        <div class="box"><b>الطرف الأول (المؤجر)</b><br>السيد/ ${U.esc(owner.name||'—')}<br>رقم الهوية/الجواز: ${U.esc(owner.idNumber||'—')}<br>العنوان: ${U.esc(owner.address||'—')}<br>هاتف: ${U.esc(owner.phone||'—')}</div>
+        <div class="box"><b>الطرف الثاني (المستأجر)</b><br>السيد/ ${U.esc(t?.name||'—')}<br>رقم الهوية/الجواز: ${U.esc(t?.idNumber||t?.passportNumber||'—')}<br>العنوان: ${U.esc(t?.address||'—')}<br>هاتف: ${U.esc(t?.phone||'—')}</div>
       </div>
-      <div class="box"><b>بيانات الوحدة</b><br>العقار: ${U.esc(p?.name||'—')} — ${U.esc(p?.address||'')}<br>الوحدة: ${U.esc(u?.name||'—')} (${U.esc(u?.type||'')}) — الطابق: ${U.esc(u?.floor||'—')}</div>
-      <h2>بنود العقد</h2>
+      <div class="box"><b>التمهيد</b><br>يمتلك الطرف الأول الشقة المؤثثة الكائنة في ${U.esc(locationText)} — ${U.esc(p?.name||'')}، الوحدة: ${U.esc(u?.name||'—')} (${U.esc(u?.type||'')}، الطابق: ${U.esc(u?.floor||'—')})، وقد رغب الطرف الثاني في استئجارها للسكن الخاص، ووافق الطرف الأول على ذلك وفقاً للشروط التالية:</div>
+      <h2>الشروط والبنود</h2>
       ${clauses}
       ${invHtml}
       ${hoHtml}
@@ -2258,6 +2509,11 @@ const Documents = {
       <div class="row2">
         <div><div class="muted">توقيع المؤجر</div><div class="sig-box">${c.landlordSignature?`<img src="${c.landlordSignature}">`:'—'}</div></div>
         <div><div class="muted">توقيع المستأجر</div><div class="sig-box">${c.tenantSignature?`<img src="${c.tenantSignature}">`:'—'}</div></div>
+      </div>
+      <h2>الشهود</h2>
+      <div class="row2">
+        <div class="box">1. الاسم: ${U.esc(c.witness1Name||'.......................')}<br><br>التوقيع: ______________________</div>
+        <div class="box">2. الاسم: ${U.esc(c.witness2Name||'.......................')}<br><br>التوقيع: ______________________</div>
       </div>
       <p class="muted" style="margin-top:20px;">هذا العقد نموذج مساعد ولا يُغني عن المراجعة القانونية المحلية قبل الاعتماد النهائي. تم إصداره إلكترونياً عبر تطبيق عقاري بتاريخ ${U.fmtDate(U.today())}.</p>
       ${Documents.qrScript('qr', c.verifyCode + ' | ' + c.contractNumber)}
