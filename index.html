@@ -518,7 +518,7 @@ function seedDB(){
     settings: {
       onboarded:false,
       orgName:'المبنى الرئيسي',
-      owner:{ name:'', idNumber:'', address:'', phone:'' },
+      owner:{ name:'الطاهر حسن الطاهر', idNumber:'', address:'', phone:'' },
       security:{ pinEnabled:false, pin:'' },
       currency:{ primary:'ج.س', secondaryEnabled:false, secondary:'USD', rate:'' },
       role:'owner',
@@ -587,7 +587,8 @@ const Q = {
     if(new Date(p.dueDate) < new Date(U.today())) return 'late';
     return 'due';
   },
-  payStatusLabel(s){ return {paid:'مدفوع',partial:'جزئي',due:'مستحق',late:'متأخر'}[s]||s; }
+  payStatusLabel(s){ return {paid:'مدفوع',partial:'جزئي',due:'مستحق',late:'متأخر'}[s]||s; },
+  brokenContracts(){ return DB.contracts.filter(c=>!DB.units.some(u=>u.id===c.unitId)); }
 };
 
 /* ---------------- Modal engine ---------------- */
@@ -869,10 +870,24 @@ const Screens = {
     const soon = DB.contracts.filter(c=>c.status==='active' && c.endDate && U.daysBetween(U.today(), c.endDate) <= 30 && U.daysBetween(U.today(), c.endDate) >= 0);
     const latePayments = DB.payments.filter(p=>Q.payStatus(p)==='late');
     const openMaint = DB.maintenance.filter(m=>m.status!=='closed');
+    const broken = Q.brokenContracts();
 
     el.innerHTML = `
       <div class="section-title">لوحة التحكم <small>${U.fmtDate(U.today())}</small></div>
       ${App.backupBannerHtml()}
+      ${broken.length ? `
+      <div class="card" style="border-color:rgba(248,113,113,.4); background:rgba(248,113,113,.06);">
+        <div class="card-row" style="align-items:flex-start;">
+          <span style="font-size:20px;">🔧</span>
+          <div style="flex:1;">
+            <div style="font-size:13px;color:var(--red);font-weight:600;">${broken.length} عقد غير مرتبط بوحدة صحيحة (بيانات قديمة)</div>
+            <div class="muted" style="font-size:11.5px;margin-top:4px;line-height:1.8;">
+              هذه العقود تحتاج منك اختيار الوحدة الصحيحة لها حتى تعمل بشكل طبيعي (تعديل العقد ← الوحدة).
+            </div>
+            <button class="btn danger sm" id="fix-broken-contracts" style="margin-top:8px;">عرض العقود المتأثرة</button>
+          </div>
+        </div>
+      </div>` : ''}
       <div class="stats-grid">
         <div class="stat-card"><div class="stat-num">${totalUnits}</div><div class="stat-label">إجمالي الوحدات (${totalProps} عقار)</div></div>
         <div class="stat-card green"><div class="stat-num">${rented}</div><div class="stat-label">وحدات مؤجرة</div></div>
@@ -925,6 +940,17 @@ const Screens = {
     U.qs('[data-qa="tenant"]',el).addEventListener('click',()=>Forms.tenant());
     U.qs('[data-qa="contract"]',el).addEventListener('click',()=>Forms.contractPickUnit());
     U.qs('[data-qa="receipt"]',el).addEventListener('click',()=>Screens.go('receipt-tool'));
+    if(el.querySelector('#fix-broken-contracts')) el.querySelector('#fix-broken-contracts').addEventListener('click',()=>{
+      const list = Q.brokenContracts();
+      const html = list.map(bc=>{
+        const t = Q.tenant(bc.tenantId);
+        return `<div class="card" data-open="${bc.id}" style="cursor:pointer;">
+          <div class="card-row"><span>${U.esc(t?.name||'—')} — ${U.esc(bc.contractNumber||'')}</span><span class="chip st-late">بحاجة لربط وحدة</span></div>
+        </div>`;
+      }).join('');
+      const m = Modal.open(html, {title:'عقود بحاجة لتصحيح'});
+      U.qsa('[data-open]', m).forEach(c=>c.addEventListener('click',()=>{ Modal.close(); Screens.go('contract-detail', c.dataset.open); }));
+    });
   },
 
   /* ---------- Properties ---------- */
@@ -1321,9 +1347,29 @@ const Screens = {
           <button class="btn ghost sm" id="sign-landlord" style="flex:1;">توقيع المؤجر</button>
           <button class="btn ghost sm" id="sign-tenant" style="flex:1;">توقيع المستأجر</button>
         </div>
+        <div class="divider"></div>
+        <div class="muted" style="font-size:12px;margin-bottom:10px;">توقيعات الشهود (إلكترونية)</div>
+        <div class="grid-2">
+          <div>
+            <div class="muted" style="font-size:12px;margin-bottom:6px;">${U.esc(c.witness1Name||'الشاهد الأول')}</div>
+            ${!c.witness1Name?`<div class="muted" style="font-size:11.5px;">أضف اسم الشاهد من تعديل العقد أولاً</div>`
+              : c.witness1Signature?`<img src="${c.witness1Signature}" style="width:100%;background:#fff;border-radius:8px;">`:'<div class="muted" style="font-size:12px;">لم يوقّع بعد</div>'}
+          </div>
+          <div>
+            <div class="muted" style="font-size:12px;margin-bottom:6px;">${U.esc(c.witness2Name||'الشاهد الثاني')}</div>
+            ${!c.witness2Name?`<div class="muted" style="font-size:11.5px;">أضف اسم الشاهد من تعديل العقد أولاً</div>`
+              : c.witness2Signature?`<img src="${c.witness2Signature}" style="width:100%;background:#fff;border-radius:8px;">`:'<div class="muted" style="font-size:12px;">لم يوقّع بعد</div>'}
+          </div>
+        </div>
+        <div class="btn-row" style="margin-top:12px;">
+          <button class="btn ghost sm" id="sign-w1" style="flex:1;" ${!c.witness1Name?'disabled':''}>توقيع الشاهد الأول</button>
+          <button class="btn ghost sm" id="sign-w2" style="flex:1;" ${!c.witness2Name?'disabled':''}>توقيع الشاهد الثاني</button>
+        </div>
       </div>`;
       ctab.querySelector('#sign-landlord').addEventListener('click',()=>Signature.open(c, 'landlordSignature'));
       ctab.querySelector('#sign-tenant').addEventListener('click',()=>Signature.open(c, 'tenantSignature'));
+      if(c.witness1Name) ctab.querySelector('#sign-w1').addEventListener('click',()=>Signature.open(c, 'witness1Signature'));
+      if(c.witness2Name) ctab.querySelector('#sign-w2').addEventListener('click',()=>Signature.open(c, 'witness2Signature'));
     } else if(tab==='payments'){
       if(!payments.length) ctab.innerHTML = `<div class="empty-state"><div class="t">لا توجد دفعات</div></div>`;
       else ctab.innerHTML = payments.map(p=>{
@@ -1918,17 +1964,22 @@ const Forms = {
       const conflict = Q.activeContractOfUnit(unitId);
       if(conflict){
         const ct = Q.tenant(conflict.tenantId);
-        U.toast(`تنبيه: يوجد عقد ساري بالفعل لهذه الوحدة مع ${ct?.name||'مستأجر آخر'}`, 'error');
+        const uu = Q.unit(unitId);
+        Modal.open(`<p style="color:var(--red);font-size:13.5px;line-height:1.9;">⚠️ لا يمكن إنشاء عقد جديد: يوجد عقد ساري بالفعل على وحدة "${U.esc(uu?.name||'')}" مع المستأجر "${U.esc(ct?.name||'مستأجر آخر')}".<br><br>أنهِ ذلك العقد أولاً من صفحة العقد، أو اختر وحدة أخرى.</p>`, {title:'تعارض في الوحدة', center:true});
         return;
       }
     }
+    const unitIsValid = editing && DB.units.some(u=>u.id===c.unitId);
     const html = `
+      <div id="f-error" class="hidden" style="color:var(--red);background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);padding:10px 12px;border-radius:10px;font-size:12.5px;margin-bottom:14px;line-height:1.7;"></div>
       ${editing? `<div class="field"><label>الوحدة</label>
-        <select id="f-unit">${DB.units.map(u=>{
+        <select id="f-unit">
+          ${!unitIsValid? `<option value="" selected>-- هذا العقد غير مرتبط بوحدة صحيحة، اختر الوحدة الصحيحة --</option>`:''}
+          ${DB.units.map(u=>{
           const pr = Q.property(u.propertyId);
           return `<option value="${u.id}" ${c.unitId===u.id?'selected':''}>${U.esc(pr?.name||'')} — ${U.esc(u.name)}</option>`;
         }).join('')}</select>
-        <small class="hint">غيّر الوحدة فقط لتصحيح خطأ في الإدخال — لا يُنصح بتغييرها لعقد فعلي جارٍ.</small>
+        <small class="hint">${!unitIsValid?'⚠️ لم يكن هذا العقد مرتبطاً بأي وحدة (بيانات قديمة) — يجب اختيار الوحدة الصحيحة قبل الحفظ.':'غيّر الوحدة فقط لتصحيح خطأ في الإدخال — لا يُنصح بتغييرها لعقد فعلي جارٍ.'}</small>
       </div>` : ''}
       <div class="field"><label>المستأجر</label>
         <select id="f-tenant">${DB.tenants.map(t=>`<option value="${t.id}" ${c.tenantId===t.id?'selected':''}>${U.esc(t.name)}</option>`).join('')}</select>
@@ -1965,12 +2016,23 @@ const Forms = {
       <button class="btn primary" id="f-save">${editing?'حفظ التعديلات':'إنشاء العقد'}</button>
     `;
     const el = Modal.open(html, {title: editing?'تعديل عقد':'عقد إيجار جديد'});
+    const errBox = el.querySelector('#f-error');
+    function showError(msg){
+      errBox.textContent = '⚠️ ' + msg;
+      errBox.classList.remove('hidden');
+      errBox.scrollIntoView({behavior:'smooth', block:'start'});
+      U.toast(msg, 'error');
+    }
     el.querySelector('#f-save').addEventListener('click',()=>{
+      errBox.classList.add('hidden');
       const tenantId = el.querySelector('#f-tenant').value;
       const startDate = el.querySelector('#f-start').value;
       const endDate = el.querySelector('#f-end').value;
       const rentAmount = Number(el.querySelector('#f-rent').value)||0;
-      if(!tenantId || !startDate || !endDate || !rentAmount){ U.toast('أكمل الحقول الأساسية','error'); return; }
+      if(editing && el.querySelector('#f-unit') && !el.querySelector('#f-unit').value){
+        showError('اختر الوحدة الصحيحة لهذا العقد قبل الحفظ.'); return;
+      }
+      if(!tenantId || !startDate || !endDate || !rentAmount){ showError('أكمل الحقول الأساسية (المستأجر، التواريخ، الإيجار).'); return; }
       const data = {
         tenantId, signDate: el.querySelector('#f-signdate').value, startDate, endDate, rentAmount,
         deposit: Number(el.querySelector('#f-deposit').value)||0,
@@ -1987,7 +2049,11 @@ const Forms = {
         const newUnitId = el.querySelector('#f-unit') ? el.querySelector('#f-unit').value : c.unitId;
         if(newUnitId !== c.unitId){
           const conflict = DB.contracts.find(x=>x.id!==c.id && x.unitId===newUnitId && x.status==='active');
-          if(conflict){ U.toast('يوجد عقد ساري بالفعل على الوحدة المُختارة','error'); return; }
+          if(conflict){
+            const conflictUnit = Q.unit(newUnitId), conflictTenant = Q.tenant(conflict.tenantId);
+            showError(`لا يمكن الحفظ: يوجد عقد ساري بالفعل على وحدة "${conflictUnit?.name||''}" مع المستأجر "${conflictTenant?.name||'مستأجر آخر'}". اختر وحدة أخرى، أو أنهِ ذلك العقد أولاً.`);
+            return;
+          }
           const oldUnit = Q.unit(c.unitId), newUnit = Q.unit(newUnitId);
           if(c.status==='active'){
             if(oldUnit) oldUnit.status='available';
@@ -2019,6 +2085,7 @@ const Forms = {
         const newC = {
           id:U.uid('con'), unitId, contractNumber, verifyCode, status:'active', createdAt:U.now(),
           inventory:[], handoverIn:null, handoverOut:null, landlordSignature:'', tenantSignature:'',
+          witness1Signature:'', witness2Signature:'',
           ...data
         };
         DB.contracts.push(newC);
@@ -2270,7 +2337,12 @@ const Signature = {
         <button class="btn primary sm" id="sig-save" style="flex:1;">حفظ التوقيع</button>
       </div>
     `;
-    const el = Modal.open(html, {title: field==='landlordSignature'?'توقيع المؤجر':'توقيع المستأجر'});
+    const titles = {
+      landlordSignature:'توقيع المؤجر', tenantSignature:'توقيع المستأجر',
+      witness1Signature: 'توقيع ' + (c.witness1Name||'الشاهد الأول'),
+      witness2Signature: 'توقيع ' + (c.witness2Name||'الشاهد الثاني')
+    };
+    const el = Modal.open(html, {title: titles[field] || 'توقيع'});
     const canvas = el.querySelector('#sig-canvas');
     canvas.width = canvas.offsetWidth;
     const ctx = canvas.getContext('2d');
@@ -2333,7 +2405,7 @@ const Actions = {
         ...JSON.parse(JSON.stringify(c)),
         id:U.uid('con'), contractNumber, verifyCode, status:'active', createdAt:U.now(),
         startDate: newStart.toISOString().slice(0,10), endDate: newEnd.toISOString().slice(0,10),
-        landlordSignature:'', tenantSignature:'', handoverIn:null, handoverOut:null
+        landlordSignature:'', tenantSignature:'', witness1Signature:'', witness2Signature:'', handoverIn:null, handoverOut:null
       };
       DB.contracts.push(newC);
       Actions.generatePaymentSchedule(newC);
@@ -2512,8 +2584,8 @@ const Documents = {
       </div>
       <h2>الشهود</h2>
       <div class="row2">
-        <div class="box">1. الاسم: ${U.esc(c.witness1Name||'.......................')}<br><br>التوقيع: ______________________</div>
-        <div class="box">2. الاسم: ${U.esc(c.witness2Name||'.......................')}<br><br>التوقيع: ______________________</div>
+        <div><div class="muted">1. الاسم: ${U.esc(c.witness1Name||'.......................')}</div><div class="sig-box">${c.witness1Signature?`<img src="${c.witness1Signature}">`:'—'}</div></div>
+        <div><div class="muted">2. الاسم: ${U.esc(c.witness2Name||'.......................')}</div><div class="sig-box">${c.witness2Signature?`<img src="${c.witness2Signature}">`:'—'}</div></div>
       </div>
       <p class="muted" style="margin-top:20px;">هذا العقد نموذج مساعد ولا يُغني عن المراجعة القانونية المحلية قبل الاعتماد النهائي. تم إصداره إلكترونياً عبر تطبيق عقاري بتاريخ ${U.fmtDate(U.today())}.</p>
       ${Documents.qrScript('qr', c.verifyCode + ' | ' + c.contractNumber)}
@@ -2550,14 +2622,22 @@ const Documents = {
   },
 
   stampSVG(ownerName){
-    const name = (ownerName||'المالك').slice(0,18);
+    const full = (ownerName||'المالك').trim();
+    const words = full.split(/\s+/);
+    let line1 = full, line2 = '';
+    if(full.length > 12 && words.length > 1){
+      const mid = Math.ceil(words.length/2);
+      line1 = words.slice(0,mid).join(' ');
+      line2 = words.slice(mid).join(' ');
+    }
+    const textSvg = line2
+      ? `<text x="60" y="57" text-anchor="middle" font-size="11.5" font-weight="700" fill="#1d4ed8" font-family="IBM Plex Sans Arabic, sans-serif">${U.esc(line1)}</text>
+         <text x="60" y="74" text-anchor="middle" font-size="11.5" font-weight="700" fill="#1d4ed8" font-family="IBM Plex Sans Arabic, sans-serif">${U.esc(line2)}</text>`
+      : `<text x="60" y="66" text-anchor="middle" font-size="12" font-weight="700" fill="#1d4ed8" font-family="IBM Plex Sans Arabic, sans-serif">${U.esc(line1)}</text>`;
     return `<svg viewBox="0 0 120 120" width="100%" height="100%">
-      <circle cx="60" cy="60" r="56" fill="none" stroke="#c23b3b" stroke-width="2.4"/>
-      <circle cx="60" cy="60" r="46" fill="none" stroke="#c23b3b" stroke-width="1.4"/>
-      <path id="tp" d="M 60 14 A 46 46 0 0 1 106 60" fill="none"/>
-      <text font-size="9" fill="#c23b3b" font-family="IBM Plex Sans Arabic, sans-serif"><textPath href="#tp" startOffset="2">إيصال استلام مبلغ معتمد</textPath></text>
-      <polygon points="60,44 63,53 72,53 65,58 67,67 60,62 53,67 55,58 48,53 57,53" fill="#c23b3b"/>
-      <text x="60" y="86" text-anchor="middle" font-size="9.5" fill="#c23b3b" font-family="IBM Plex Sans Arabic, sans-serif">${name}</text>
+      <circle cx="60" cy="60" r="56" fill="none" stroke="#1d4ed8" stroke-width="2.4"/>
+      <circle cx="60" cy="60" r="46" fill="none" stroke="#1d4ed8" stroke-width="1.4"/>
+      ${textSvg}
     </svg>`;
   },
 
